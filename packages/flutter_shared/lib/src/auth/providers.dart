@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../network/api_client.dart';
 import 'controller.dart';
+import '../push/push_service.dart';
 import 'gateway.dart';
 import 'models.dart';
 import 'state.dart';
@@ -30,3 +31,9 @@ class AuthUiConfig {
 final authUiConfigProvider = Provider<AuthUiConfig>((ref) => throw UnimplementedError('override authUiConfigProvider'));
 
 final authControllerProvider = NotifierProvider<AuthController, AppAuthState>(AuthController.new);
+
+/// Work to do just before sign-out, while the session is still valid: removes this phone's push
+/// token so a signed-out device stops receiving that account's notifications.
+typedef SignOutHook = Future<void> Function();
+
+final beforeSignOutProvider = Provider<SignOutHook>((ref) => () => ref.read(pushRegistrarProvider).unregister());

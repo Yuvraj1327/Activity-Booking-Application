@@ -71,7 +71,7 @@ void main() {
 
     await tester.tap(inNavBar('Bookings'));
     await tester.pumpAndSettle();
-    expect(find.text('No bookings yet'), findsOneWidget);
+    expect(find.text('No upcoming bookings'), findsOneWidget);
 
     await tester.tap(inNavBar('Explore'));
     await tester.pumpAndSettle();

@@ -20,3 +20,5 @@ export 'src/auth/state.dart';
 export 'src/auth/supabase_gateway.dart';
 export 'src/auth/ui/auth_screens.dart';
 export 'src/auth/ui/auth_widgets.dart';
+export 'src/push/push_bootstrap.dart';
+export 'src/push/push_service.dart';

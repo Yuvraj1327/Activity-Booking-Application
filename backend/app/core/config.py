@@ -27,6 +27,17 @@ _OPTIONAL_TEXT_FIELDS = (
     "supabase_jwt_issuer",
     "docs_enabled",
     "admin_require_mfa",
+    "booking_hold_minutes",
+    "razorpay_key_id",
+    "razorpay_key_secret",
+    "razorpay_webhook_secret",
+    "firebase_project_id",
+    "firebase_service_account",
+    "resend_api_key",
+    "email_from_address",
+    "cancellation_min_notice_hours",
+    "booking_min_notice_minutes",
+    "booking_max_advance_days",
 )
 
 
@@ -80,6 +91,32 @@ class Settings(BaseSettings):
     # Admin endpoints require an MFA-verified session (token claim aal=aal2), decision D-24.
     # None = automatic: required in staging/production, not in development/test.
     admin_require_mfa: bool | None = None
+
+    # --- Booking rules (Step 6). Unresolved business rules have NO default: unset = not applied ---
+    # "hold": new bookings are pending_payment until payment is verified (Step 7) and need
+    # BOOKING_HOLD_MINUTES (open question N4). "instant": bookings are confirmed immediately with
+    # payment_status "unpaid"; for development/testing or venues that take no online payment.
+    booking_mode: Literal["hold", "instant"] = "hold"
+    booking_hold_minutes: int | None = Field(default=None, ge=1, le=1440)
+    # Customers may cancel a CONFIRMED booking only when this is set and enough notice remains (Q9).
+    cancellation_min_notice_hours: int | None = Field(default=None, ge=0, le=8760)
+    booking_min_notice_minutes: int | None = Field(default=None, ge=0, le=525600)  # N6
+    booking_max_advance_days: int | None = Field(default=None, ge=1, le=730)  # N6
+
+    # --- Payments, push and email (Step 7). Secrets exist ONLY in the backend environment. ---
+    # Use Razorpay TEST keys (rzp_test_...) outside production. Unset = the feature is "not configured".
+    razorpay_key_id: str | None = None  # public identifier, sent to the app with the order
+    razorpay_key_secret: SecretStr | None = None
+    razorpay_webhook_secret: SecretStr | None = None  # separate from the API secret (set in dashboard)
+    razorpay_api_base: str = "https://api.razorpay.com/v1"
+    firebase_project_id: str | None = None
+    # Service-account JSON, either the JSON text itself or a path to the JSON file.
+    firebase_service_account: SecretStr | None = None
+    resend_api_key: SecretStr | None = None
+    email_from_address: str | None = None  # e.g. "ZURUV <bookings@your-verified-domain>"
+    # In-process housekeeping loop (outbox retry, payment reconciliation). 0 disables it.
+    background_sweep_seconds: int = Field(default=60, ge=0, le=3600)
+    payment_reconcile_after_minutes: int = Field(default=3, ge=1, le=1440)
 
     # ------------------------------------------------------------------ validators
     @field_validator(*_OPTIONAL_TEXT_FIELDS, mode="before")

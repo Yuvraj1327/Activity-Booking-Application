@@ -72,6 +72,8 @@ flutter run --dart-define-from-file=env/dev.json
 flutter analyze && flutter test
 ```
 
+Owner app prerequisites: the backend running with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set (for venue photos), `seed_reference_data` run (cities, sports, amenities), and an account registered **as an owner**. `bootstrap_flutter.sh` also runs `scripts/configure_owner_platforms.py` (photo permission and the `io.zuruv.owner://login-callback` deep link; add that URL to the Supabase redirect allow-list). Run it with `cd apps/owner_app && flutter run --dart-define-from-file=env/dev.json`.
+
 Customer app prerequisites: the backend running, `seed_reference_data` run, and your Supabase values in `env/dev.json`. On a fresh clone `bootstrap_flutter.sh` also runs `scripts/configure_customer_platforms.py`, which adds the location and photo permissions and the `io.zuruv.customer://login-callback` deep link to the generated Android/iOS runners.
 
 ```bash

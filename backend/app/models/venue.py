@@ -1,8 +1,20 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Numeric, Text, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    SmallInteger,
+    Text,
+    Time,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -96,6 +108,9 @@ class VenueResource(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    # Set by the owner. While either is NULL the resource is "not configured" and has no slots.
+    slot_minutes: Mapped[int | None] = mapped_column(Integer)
+    slot_price_paise: Mapped[int | None] = mapped_column(BigInteger)
 
 
 class Favorite(Base):
@@ -107,5 +122,45 @@ class Favorite(Base):
         PG_UUID(as_uuid=True), ForeignKey("venues.id", ondelete="CASCADE"), primary_key=True
     )
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+
+class ScheduleRule(Base):
+    """One open interval on a weekday (0 = Monday). Local time at the venue."""
+
+    __tablename__ = "schedule_rules"
+    id: Mapped[UUID] = uuid_pk()
+    venue_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("venues.id", ondelete="CASCADE"), nullable=False
+    )
+    weekday: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    opens_at: Mapped[time] = mapped_column(Time, nullable=False)
+    closes_at: Mapped[time] = mapped_column(Time, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+
+class ScheduleException(Base):
+    """Special date: a closure or one custom interval that replaces the regular hours."""
+
+    __tablename__ = "schedule_exceptions"
+    id: Mapped[UUID] = uuid_pk()
+    venue_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("venues.id", ondelete="CASCADE"), nullable=False
+    )
+    on_date: Mapped[date] = mapped_column(Date, nullable=False)
+    is_closed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    opens_at: Mapped[time | None] = mapped_column(Time)
+    closes_at: Mapped[time | None] = mapped_column(Time)
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )

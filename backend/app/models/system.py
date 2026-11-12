@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Text, text
+from sqlalchemy import DateTime, ForeignKey, Integer, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -25,6 +25,17 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
+    # Step 7: related records, de-duplication and push delivery state
+    booking_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("bookings.id", ondelete="SET NULL")
+    )
+    payment_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("payments.id", ondelete="SET NULL")
+    )
+    dedupe_key: Mapped[str | None] = mapped_column(Text)
+    push_status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'skipped'"))
+    push_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    push_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AuditLog(Base):

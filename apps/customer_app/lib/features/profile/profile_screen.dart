@@ -45,6 +45,7 @@ class ProfileScreen extends ConsumerWidget {
           const Divider(),
           _Tile(icon: Icons.favorite_border_rounded, label: 'My favorites', onTap: () => context.go('/favorites')),
           _Tile(icon: Icons.calendar_month_outlined, label: 'My bookings', onTap: () => context.go('/bookings')),
+          _Tile(icon: Icons.receipt_long_outlined, label: 'Payment history', onTap: () => context.push('/payments')),
           _Tile(
             icon: Icons.place_outlined,
             label: 'City',

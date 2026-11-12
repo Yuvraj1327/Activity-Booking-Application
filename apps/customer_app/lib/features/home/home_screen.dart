@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_shared/flutter_shared.dart';
 import 'package:go_router/go_router.dart';
 
+import '../notifications/notifications_screen.dart';
 import '../../core/constants/tokens.dart';
 import '../../core/network/api_helpers.dart';
 import '../../shared/models/catalog.dart';
@@ -79,7 +80,11 @@ class HomeScreen extends ConsumerWidget {
                     IconButton(
                       tooltip: 'Notifications',
                       onPressed: () => context.push('/notifications'),
-                      icon: const Icon(Icons.notifications_none_rounded, size: 26),
+                      icon: Badge(
+                        isLabelVisible: (ref.watch(unreadCountProvider).valueOrNull ?? 0) > 0,
+                        label: Text('${ref.watch(unreadCountProvider).valueOrNull ?? 0}'),
+                        child: const Icon(Icons.notifications_none_rounded, size: 26),
+                      ),
                     ),
                   ],
                 ),

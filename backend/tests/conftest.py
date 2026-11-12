@@ -39,7 +39,7 @@ SUPABASE_URL = "https://testproject.supabase.co"
 ISSUER = f"{SUPABASE_URL}/auth/v1"
 
 CLEAN_SQL = """
-TRUNCATE public.favorites, public.audit_logs, public.notifications, public.venue_resources, public.venue_images,
+TRUNCATE public.email_deliveries, public.notification_preferences, public.user_device_tokens, public.payment_events, public.payments, public.booking_status_history, public.booking_slots, public.bookings, public.availability_blocks, public.schedule_exceptions, public.schedule_rules, public.favorites, public.audit_logs, public.notifications, public.venue_resources, public.venue_images,
          public.venue_amenities, public.venue_categories, public.venues, public.owner_profiles,
          public.customer_profiles, public.profiles, public.cities, public.categories,
          public.amenities, auth.users CASCADE;
@@ -48,7 +48,7 @@ DELETE FROM storage.objects;
 
 
 def make_settings(**overrides: object) -> Settings:
-    base: dict[str, object] = {"environment": "test", "log_json": False}
+    base: dict[str, object] = {"environment": "test", "log_json": False, "background_sweep_seconds": 0}
     base.update(overrides)
     return Settings(_env_file=None, **base)  # type: ignore[arg-type]
 

@@ -82,7 +82,7 @@ erDiagram
   }
 ```
 
-## Tables (14)
+## Tables (25)
 
 | Table | Purpose | Key constraints |
 |---|---|---|
@@ -96,10 +96,21 @@ erDiagram
 | `venue_images` | Image metadata (files live in Storage) | `storage_path` unique and inside `<venue_id>/`; status pending/active; one cover per venue (partial unique index); a cover must be active |
 | `venue_resources` | Bookable units inside a venue (courts) | Unique `(venue_id, lower(name))`. **Structural only**, see decisions |
 | `favorites` | Customer ↔ venue bookmarks (**Step 4**, migration `0004`) | PK `(customer_id, venue_id)` so a pair exists once; FK to `customer_profiles` (only customers) and `venues`, both CASCADE; indexes on `(customer_id, created_at DESC)` and `venue_id` |
-| `notifications` | In-app notifications | `data` must be a JSON object; indexes for list and unread |
+| `schedule_rules` | Weekly opening hours (**Step 5**, migration `0005`) | `weekday` 0–6 (0 = Monday); `opens_at < closes_at`; `UNIQUE(venue_id, weekday, opens_at)`; cascade with venue; local time at the venue (its `timezone`). Hours only: no slot length, courts or pricing (D-53) |
+| `schedule_exceptions` | Special dates (**Step 5**) | `UNIQUE(venue_id, on_date)`; closed ⇒ no hours, open ⇒ both hours with `opens_at < closes_at`; note ≤ 200 chars |
+| `bookings` | A reservation (**Step 6**, migration `0006`) | Unique `booking_code`; status and payment_status CHECKs; times and duration must agree; amounts ≥ 0; price/name/time-zone snapshots; `expires_at` required while `pending_payment`; unique `(customer_id, idempotency_key)`; FKs `RESTRICT` |
+| `booking_slots` | Reserved time per booking (**Step 6**) | `tstzrange`, bounded and non-empty; `EXCLUDE USING gist (resource_id WITH =, slot_range WITH &&) WHERE (is_blocking)` forbids double-booking (needs `btree_gist`) |
+| `booking_status_history` | Status audit trail (**Step 6**) | Append-only (update trigger); actor role customer/owner/admin/system |
+| `availability_blocks` | Owner temporary unavailability (**Step 6**) | `resource_id` NULL = whole venue; non-empty bounded range |
+| `notifications` | In-app notifications (**Step 7 adds** `booking_id`, `payment_id`, `dedupe_key`, `push_status`, `push_attempts`, `push_sent_at`) | `data` must be a JSON object (ids only); `UNIQUE(user_id, dedupe_key)`; partial index on pending pushes |
+| `payments` | One Razorpay order/payment per booking (**Step 7**, migration `0007`) | `UNIQUE(booking_id)`, `UNIQUE(provider, provider_order_id)`, partial `UNIQUE(provider, provider_payment_id)`; status CHECK (created, pending, authorized, captured, failed, refunded, partially_refunded); `amount_paise > 0`; captured ⇒ payment id present; `review_required` ⇒ reason; no card data |
+| `payment_events` | Append-only record of every gateway signal (**Step 7**) | Partial `UNIQUE(provider_event_id)` = webhook idempotency; update trigger blocks edits; outcome applied/duplicate/ignored/rejected; sanitised `detail` |
+| `user_device_tokens` | FCM tokens (**Step 7**) | `UNIQUE(token)`; platform android/ios/web; app customer/owner/admin; no client grant |
+| `notification_preferences` | `push_enabled`, `email_enabled` per user (**Step 7**) | PK `user_id`; own row readable |
+| `email_deliveries` | Email queue and delivery log (**Step 7**) | `UNIQUE(dedupe_key)`; status queued/sent/failed/skipped; non-secret `context`; no client grant |
 | `audit_logs` | Append-only trail | Update/delete blocked by trigger (only the FK nulling `actor_id` is allowed); `actor_role` ∈ customer/owner/admin/system |
 
-All tables use UUID primary keys (`gen_random_uuid()`), `timestamptz` timestamps, and `updated_at` is maintained by a trigger. Money columns do not exist yet (bookings and payments are later steps).
+All tables use UUID primary keys (`gen_random_uuid()`), `timestamptz` timestamps, and `updated_at` is maintained by a trigger. Money columns (integer paise) exist on `bookings` since Step 6; payments and refunds are Step 7. `venue_resources` gained `slot_minutes` (5–720) and `slot_price_paise` (≥ 0), both NULL until the owner sets them.
 
 ## Decisions and deviations from the Step 1 plan
 
@@ -119,8 +130,8 @@ All tables use UUID primary keys (`gen_random_uuid()`), `timestamptz` timestamps
 
 ## RLS summary
 
-All 14 tables have RLS enabled (21 `SELECT` policies on `public`; `favorites_select_own` = own rows, customers only). `anon` and `authenticated` hold `SELECT` only (writes are revoked) and the only policies are `SELECT` policies; **there are no insert/update/delete policies**, so even a mistaken GRANT cannot allow a client write (tested both ways). See ROLE_PERMISSION_MATRIX.md for who sees what.
+All 25 tables have RLS enabled (Step 7: `payments` readable by its customer, the venue's owner and admins; `notification_preferences` by its user; `payment_events`, `user_device_tokens` and `email_deliveries` by nobody but the backend) (Step 6 added 4 tables and 7 more `SELECT` policies; before that 23 `SELECT` policies on `public`; the two schedule tables are readable only for venues the caller can already see; `favorites_select_own` = own rows, customers only). `anon` and `authenticated` hold `SELECT` only (writes are revoked) and the only policies are `SELECT` policies; **there are no insert/update/delete policies**, so even a mistaken GRANT cannot allow a client write (tested both ways). See ROLE_PERMISSION_MATRIX.md for who sees what.
 
 ## Not in this schema yet
 
-Bookings, slots, payments, refunds, ledger, payouts, reviews, device tokens, schedules, jobs. Added by the steps that need them.
+Refunds, ledger, payouts (no approved policy: Q9, Q10), reviews. Added by the steps that need them. Jobs are an in-process loop plus the `notifications`/`email_deliveries` outbox, not a table.

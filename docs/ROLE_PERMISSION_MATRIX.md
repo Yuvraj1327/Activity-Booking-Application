@@ -15,6 +15,8 @@ Authorisation is decided **server-side from the `profiles` table** (decision D-1
 | `GET /admin/me` | 401 | 403 | 403 | ✔ (+MFA when required) | 403 |
 | `GET /cities`, `/categories`, `/amenities`, `/venues`, `/venues/{id}` (published only) — **Step 4** | 401 | ✔ | ✔ | ✔ | 403 |
 | `GET/POST /favorites`, `DELETE /favorites/{venue_id}` — **Step 4** | 401 | ✔ own | 403 | 403 | 403 |
+| `/owners/venues` (list, create, get, patch, delete, publish, unpublish, images, schedules) — **Step 5** | 401 | 403 | ✔ **own venues only**; another owner's venue → 404 | 403 | 403 |
+| `/owners/dashboard`, `/owners/analytics`, `/owners/notifications`, `/owners/bookings`, `/owners/earnings`, `/owners/reviews` — **Step 5** | 401 | 403 | ✔ own data | 403 | 403 |
 
 Rules enforced and tested:
 - No endpoint accepts a user id; the subject is always the verified token. Sending `role`, `status`, `id` or `email` in a body is rejected (422).
@@ -29,7 +31,8 @@ Rules enforced and tested:
 | Own profile | ✔ | ✔ | ✔ | Step 3 |
 | Browse published venues | ✔ | ✔ | ✔ | Step 4 |
 | Create / manage venues | ✖ | own only | ✖ by default | Step 5 (ownership already enforced by FK + RLS) |
-| Bookings, payments | customer | owner (own venues) | read | Steps 6–7 |
+| Bookings (**Step 6**) | own, create, cancel under the rules | own venues, read, customer name only | read all | Created and cancelled only through the API; no role can set a status directly |
+| Payments | customer | owner (own venues) | read | Step 7 |
 | Manage accounts | own | own | per Q18 | Step 8 |
 
 ## Database (RLS) read access, as the `authenticated` / `anon` roles
@@ -54,3 +57,24 @@ Suspended users get `NULL` from `app_user_role()`, so they lose everything excep
 |---|---|---|
 | `venue-images` (public) | anyone with the URL | backend only (no client policy) |
 | `profile-images` (private) | owner of the folder | owner of the folder, path `<user_id>/<name>.jpg|jpeg|png|webp` only |
+
+### Step 6 routes
+
+| Route | Customer | Owner | Admin | Anonymous |
+|---|---|---|---|---|
+| `GET /venues/{id}/availability`, `/availability/dates` | ✔ | ✔ | ✔ | 401 |
+| `POST /bookings/quote`, `POST /bookings`, `GET /bookings`, `GET /bookings/{id}`, `…/cancellation-preview`, `POST …/cancel` | ✔ own only (other's → 404) | 403 | 403 | 401 |
+| `GET /owners/bookings`, `/owners/bookings/{id}`, courts and blocks under `/owners/venues/{id}/…` | 403 | ✔ own venues (other's → 404) | 403 | 401 |
+| `GET /admin/bookings`, `/admin/bookings/{id}` | 403 | 403 | ✔ (MFA rule) | 401 |
+
+### Step 7 routes
+
+| Route | Customer | Owner | Admin | Anonymous |
+|---|---|---|---|---|
+| `POST /payments/create-order`, `POST /payments/verify`, `GET /payments/{id}`, `GET /payments/history` | ✔ own only (other's → 404) | 403 | 403 | 401 |
+| `POST /payments/webhook` | n/a | n/a | n/a | signature-authenticated (no JWT) |
+| `GET /owners/payments`, `GET /owners/earnings` | 403 | ✔ own venues only | 403 | 401 |
+| `GET /admin/payments`, `/admin/payments/{id}`, `/admin/payments/summary` | 403 | 403 | ✔ (MFA rule) | 401 |
+| `GET /notifications…`, `POST /notifications/{id}/read`, `/read-all`, `GET/PUT /notifications/preferences`, `PUT /devices/token`, `POST /devices/token/remove` | ✔ own | ✔ own | ✔ own | 401 |
+
+Database: `payments` is readable by its customer, by the owner of its venue and by admins (RLS); nobody can write through the API roles.

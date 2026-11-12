@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
+from app.core.config import Settings
 from tests.conftest import make_settings
 
 
@@ -53,3 +54,21 @@ def test_docs_disabled_in_production_by_default():
 def test_secrets_not_in_repr():
     s = make_settings(database_url="postgresql://u:topsecret@h/d")
     assert "topsecret" not in repr(s)
+
+
+def test_step7_provider_settings_default_to_not_configured_and_hide_secrets():
+    s = Settings(
+        _env_file=None, environment="test", razorpay_key_id="", razorpay_key_secret="", resend_api_key=""
+    )
+    assert s.razorpay_key_id is None and s.razorpay_key_secret is None and s.resend_api_key is None
+    t = Settings(
+        _env_file=None,
+        environment="test",
+        razorpay_key_secret="super-secret-value",
+        razorpay_webhook_secret="hook-secret-value",
+        firebase_service_account='{"private_key": "-----BEGIN PRIVATE KEY-----"}',
+        resend_api_key="re_secret_value",
+    )
+    text = repr(t) + str(t.model_dump())
+    for leaked in ("super-secret-value", "hook-secret-value", "BEGIN PRIVATE KEY", "re_secret_value"):
+        assert leaked not in text

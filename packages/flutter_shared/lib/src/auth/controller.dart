@@ -182,6 +182,10 @@ class AuthController extends Notifier<AppAuthState> {
   }
 
   Future<void> signOut() async {
+    // Stop pushes for this account on this phone BEFORE the session (and its token) goes away.
+    try {
+      await ref.read(beforeSignOutProvider)();
+    } catch (_) {}
     await _gateway.signOut();
     state = const Unauthenticated();
   }

@@ -17,8 +17,9 @@ bootstrap() { # dir project_name org_suffix
 bootstrap customer_app zuruv_customer
 bootstrap owner_app zuruv_owner
 
-# Location / photo permissions and the auth deep link for the Customer app.
+# Location / photo permissions and the auth deep link for each app.
 python3 "$ROOT/scripts/configure_customer_platforms.py"
+python3 "$ROOT/scripts/configure_owner_platforms.py"
 
 echo "Done. Copy apps/*/env/dev.example.json to dev.json, then:"
 echo "  cd apps/customer_app && flutter run --dart-define-from-file=env/dev.json"

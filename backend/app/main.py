@@ -4,6 +4,8 @@ Run from the backend/ directory:
     uvicorn app.main:app --reload --host 0.0.0.0 --port 8008
 """
 
+import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -21,7 +23,12 @@ from app.core.middleware import RequestContextMiddleware
 from app.core.security import build_jwt_verifier
 from app.database.health import check_database
 from app.database.session import Database
+from app.gateways.fcm import FcmSender
+from app.gateways.razorpay import RazorpayGateway
+from app.gateways.resend import ResendSender
 from app.schemas.common import DatabaseStatus, ErrorResponse, HealthResponse
+from app.services.dispatch import sweep_loop
+from app.services.storage import SupabaseStorageGateway
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +42,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.settings = settings
         app.state.db = Database(settings)  # lazy: does not connect
         app.state.jwt_verifier = build_jwt_verifier(settings)
+        if not hasattr(app.state, "storage"):  # tests may inject a fake before startup
+            app.state.storage = SupabaseStorageGateway(settings)
+        # Payment / push / email providers; tests inject fakes before startup.
+        if not hasattr(app.state, "payment_gateway"):
+            app.state.payment_gateway = RazorpayGateway(settings)
+        if not hasattr(app.state, "push_sender"):
+            app.state.push_sender = FcmSender(settings)
+        if not hasattr(app.state, "email_sender"):
+            app.state.email_sender = ResendSender(settings)
+        sweeper = None
+        if settings.background_sweep_seconds and app.state.db.configured:
+            sweeper = asyncio.create_task(sweep_loop(app, settings.background_sweep_seconds))
         logger.info(
             "startup",
             extra={
@@ -46,6 +65,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
+            if sweeper is not None:
+                sweeper.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await sweeper
             await app.state.db.dispose()
             logger.info("shutdown")
 
@@ -66,6 +89,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     # Expose settings/db early so tests using TestClient without lifespan still work.
     app.state.settings = settings
+    app.state.storage = SupabaseStorageGateway(settings)
+    app.state.payment_gateway = RazorpayGateway(settings)
+    app.state.push_sender = FcmSender(settings)
+    app.state.email_sender = ResendSender(settings)
 
     register_exception_handlers(app)
 

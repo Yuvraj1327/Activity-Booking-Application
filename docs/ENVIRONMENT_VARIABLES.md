@@ -15,7 +15,7 @@ None of these files may be committed. Only the `*.example` files are tracked.
 | `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`, `DB_POOL_TIMEOUT`, `DB_CONNECT_TIMEOUT`, `DB_HEALTH_TIMEOUT` | no | Pool/timeouts (5, 5, 30, 10, 3). |
 | `SUPABASE_URL` | prod: yes* | Also the source of the default JWKS URL and issuer. |
 | `SUPABASE_ANON_KEY` | no | Public key. |
-| `SUPABASE_SERVICE_ROLE_KEY` | no | **Server only, secret.** Not used by any Step 2 code. |
+| `SUPABASE_SERVICE_ROLE_KEY` | no | **Server only, secret.** Used since Step 5 for one thing: the backend uploads/deletes venue photos in the `venue-images` bucket. Without it, `POST /owners/venues/{id}/images` answers `503 STORAGE_NOT_CONFIGURED`. Never put it in a Flutter or Next.js build. |
 | `SUPABASE_JWT_SECRET` | no | Only for projects that sign with a legacy shared HS256 secret. |
 | `SUPABASE_JWKS_URL`, `SUPABASE_JWT_ISSUER`, `SUPABASE_JWT_AUDIENCE` | no | Overrides. Audience defaults to `authenticated`. |
 | `ADMIN_REQUIRE_MFA` | no | `true`/`false`. Empty = required in staging/production only. Admin endpoints then need an `aal2` session. |
@@ -40,3 +40,34 @@ None of these files may be committed. Only the `*.example` files are tracked.
 ## Root `.env` (docker compose only)
 
 `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` for the optional local Postgres. Choose your own values.
+
+## Booking rules (Step 6, backend)
+
+None of these has an invented default. Each one is an open business decision; leaving it empty switches the related behaviour off (or makes the API say it is not configured). Defaults for tests are set per test.
+
+| Variable | Values | Empty means | Open question |
+|---|---|---|---|
+| `BOOKING_MODE` | `hold` (default) or `instant` | `hold`: a booking reserves the slot as `pending_payment` until paid or expired. `instant`: confirmed immediately, `payment_status` stays `unpaid` (testing or venues without online payment). It never pretends a payment happened. | Q11 |
+| `BOOKING_HOLD_MINUTES` | 1–1440 | In `hold` mode `POST /bookings` answers `503 BOOKING_NOT_CONFIGURED`. | N4 |
+| `CANCELLATION_MIN_NOTICE_HOURS` | 0–8760 | Customers cannot cancel a **confirmed** booking online (`409 CANCELLATION_NOT_AVAILABLE`). Unpaid holds can always be released. Paid bookings cannot be cancelled until the refund policy exists (Step 7). | Q9 |
+| `BOOKING_MIN_NOTICE_MINUTES` | 0–525600 | No minimum notice (a slot must still not have started). | N6 |
+| `BOOKING_MAX_ADVANCE_DAYS` | 1–730 | No maximum advance window. | N6 |
+
+## Payments, push and email (Step 7, backend only)
+
+Real credentials are never committed and never placed in Flutter or in `NEXT_PUBLIC_*` variables. Use Razorpay **test** keys outside production. Unset = the feature answers "not configured" (nothing is faked).
+
+| Variable | Notes |
+|---|---|
+| `RAZORPAY_KEY_ID` | Public identifier (`rzp_test_...`); returned to the app with each order. |
+| `RAZORPAY_KEY_SECRET` | Secret. Signs/verifies checkout signatures and authenticates API calls. |
+| `RAZORPAY_WEBHOOK_SECRET` | Secret set in the Razorpay webhook form; **different** from the key secret. |
+| `RAZORPAY_API_BASE` | Default `https://api.razorpay.com/v1`. |
+| `FIREBASE_PROJECT_ID` | FCM project. |
+| `FIREBASE_SERVICE_ACCOUNT` | Secret. Service-account JSON text **or** a path to the file. |
+| `RESEND_API_KEY` | Secret. |
+| `EMAIL_FROM_ADDRESS` | Sender on a Resend-verified domain, e.g. `ZURUV <bookings@your-domain>`. |
+| `BACKGROUND_SWEEP_SECONDS` | Default 60; `0` disables the in-process retry/reconciliation loop. |
+| `PAYMENT_RECONCILE_AFTER_MINUTES` | Default 3; open payments older than this are reconciled with Razorpay by the sweep. |
+
+Flutter apps: Firebase is configured through the native `google-services.json` / `GoogleService-Info.plist` (not in git). No Razorpay secret and no service account ever goes in `dev.json`.

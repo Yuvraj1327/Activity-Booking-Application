@@ -172,6 +172,9 @@ def test_suspended_user_loses_rls_access(world):
 TABLES = [
     "profiles", "customer_profiles", "owner_profiles", "cities", "categories", "amenities", "venues",
     "venue_categories", "venue_amenities", "venue_images", "venue_resources", "notifications", "audit_logs", "favorites",
+    "schedule_rules", "schedule_exceptions", "bookings", "booking_slots", "booking_status_history",
+    "availability_blocks", "payments", "payment_events", "user_device_tokens", "notification_preferences",
+    "email_deliveries",
 ]  # fmt: skip
 
 

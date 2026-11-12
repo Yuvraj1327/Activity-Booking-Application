@@ -10,11 +10,14 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Initialises Supabase when configured; it restores a stored session automatically.
   await initSupabase();
+  // Firebase Cloud Messaging; a no-op if the native Firebase config files are not present.
+  final push = await FirebasePushMessaging.init();
   final prefs = await SharedPreferences.getInstance();
   runApp(
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        pushMessagingProvider.overrideWithValue(push),
         expectedRoleProvider.overrideWithValue(AppRole.customer),
         authUiConfigProvider.overrideWithValue(
           const AuthUiConfig(appName: 'ZURUV', role: AppRole.customer),

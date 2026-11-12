@@ -4,6 +4,8 @@ import 'package:flutter_shared/flutter_shared.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/categories/categories_provider.dart';
+import '../../features/booking/booking_screen.dart';
+import '../../features/bookings/booking_details_screen.dart';
 import '../../features/bookings/bookings_screen.dart';
 import '../../features/discovery/venue_list_screen.dart';
 import '../../features/favorites/favorites_screen.dart';
@@ -11,6 +13,8 @@ import '../../features/home/home_screen.dart';
 import '../../features/location/location_controller.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
+import '../../features/payments/payment_history_screen.dart';
+import '../../features/payments/payment_screen.dart';
 import '../../features/profile/edit_profile_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/shell/main_shell.dart';
@@ -67,6 +71,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen())]),
         ],
       ),
+      GoRoute(path: '/venues/:id/book', builder: (_, state) => BookingScreen(venueId: state.pathParameters['id']!)),
+      GoRoute(path: '/bookings/:id/pay', builder: (_, state) => PaymentScreen(bookingId: state.pathParameters['id']!)),
+      GoRoute(path: '/payments', builder: (_, __) => const PaymentHistoryScreen()),
+      GoRoute(path: '/bookings/:id', builder: (_, state) => BookingDetailsScreen(bookingId: state.pathParameters['id']!)),
       GoRoute(path: '/venues/:id', builder: (_, state) => VenueDetailsScreen(venueId: state.pathParameters['id']!)),
       GoRoute(path: '/category/:slug', builder: (_, state) => _CategoryRoute(slug: state.pathParameters['slug']!)),
       GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
@@ -90,4 +98,11 @@ class _CategoryRoute extends ConsumerWidget {
         .firstOrNull;
     return VenueListScreen(key: ValueKey(slug), fixedCategory: slug, title: name ?? 'Venues');
   }
+}
+
+/// Where a tapped push notification should open. Pushes carry ids only; the screen loads the data.
+String pushRoute(Map<String, String> data) {
+  final booking = data['booking_id'];
+  if (booking != null && booking.isNotEmpty) return '/bookings/$booking';
+  return '/notifications';
 }

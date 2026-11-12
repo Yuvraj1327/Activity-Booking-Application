@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,8 +12,16 @@ import 'package:zuruv_customer/core/config/app_config.dart';
 import 'package:zuruv_customer/core/storage/preferences.dart';
 import 'package:zuruv_customer/features/location/location_service.dart';
 import 'package:zuruv_customer/features/profile/avatar_service.dart';
+import 'package:zuruv_customer/features/payments/checkout_launcher.dart';
+import 'package:zuruv_customer/features/payments/payment_flow.dart';
+import 'package:zuruv_customer/shared/models/app_notification.dart';
+import 'package:zuruv_customer/shared/models/booking.dart';
+import 'package:zuruv_customer/shared/models/payment.dart';
 import 'package:zuruv_customer/shared/models/catalog.dart';
 import 'package:zuruv_customer/shared/models/venue.dart';
+import 'package:zuruv_customer/shared/repositories/booking_repository.dart';
+import 'package:zuruv_customer/shared/repositories/notification_repository.dart';
+import 'package:zuruv_customer/shared/repositories/payment_repository.dart';
 import 'package:zuruv_customer/shared/repositories/profile_repository.dart';
 import 'package:zuruv_customer/shared/repositories/venue_repository.dart';
 
@@ -109,6 +119,284 @@ class FakeVenueRepository implements VenueRepository {
   }
 }
 
+Slot slot(String hhmm, {int price = 50000}) {
+  final h = int.parse(hhmm.split(':')[0]);
+  final start = DateTime.utc(2030, 1, 7, h);
+  return Slot(
+    startsAt: start,
+    endsAt: start.add(const Duration(hours: 1)),
+    localStart: hhmm,
+    localEnd: '${(h + 1).toString().padLeft(2, '0')}:00',
+    pricePaise: price,
+  );
+}
+
+Booking bookingOf(
+  String id, {
+  String status = 'pending_payment',
+  String venueName = 'Ace Arena',
+  bool canCancel = true,
+  String code = 'ZUR-ABCD2345',
+  List<StatusEvent> history = const [],
+  String paymentStatus = 'unpaid',
+}) =>
+    Booking(
+      id: id,
+      code: code,
+      status: status,
+      paymentStatus: paymentStatus,
+      venueId: 'v1',
+      venueName: venueName,
+      resourceName: 'Court 1',
+      bookingDate: '2030-01-07',
+      startsAt: DateTime.utc(2030, 1, 7, 9),
+      endsAt: DateTime.utc(2030, 1, 7, 10),
+      localStart: '09:00',
+      localEnd: '10:00',
+      durationMinutes: 60,
+      currency: 'INR',
+      totalAmountPaise: 50000,
+      expiresAt: DateTime.utc(2030, 1, 7, 8),
+      canCancel: canCancel,
+      history: history,
+    );
+
+/// In-memory stand-in for the booking API. Availability and rules are whatever the test says;
+/// the app must display them, never invent them.
+class FakeBookingRepository implements BookingRepository {
+  FakeBookingRepository({List<CourtAvailability>? courts, this.closedReason, this.note, List<Booking>? bookings})
+      : courts = courts ??
+            [
+              CourtAvailability(
+                resourceId: 'r1',
+                name: 'Court 1',
+                state: ResourceState.available,
+                slotMinutes: 60,
+                slotPricePaise: 50000,
+                slots: [slot('09:00'), slot('10:00')],
+              ),
+            ],
+        bookings = bookings ?? [];
+
+  List<CourtAvailability> courts;
+  String? closedReason;
+  String? note;
+  final List<Booking> bookings;
+
+  Object? availabilityError;
+  Object? listError;
+  Object? quoteError;
+  Object? createError;
+  CancellationPreview preview = const CancellationPreview(canCancel: true, code: 'OK', message: 'Cancelling releases the slot.');
+  final List<String> idempotencyKeys = [];
+  final List<String> availabilityDates = [];
+  final List<String> cancelled = [];
+
+  @override
+  Future<Availability> availability(String venueId, String date, {String? resourceId}) async {
+    availabilityDates.add(date);
+    if (availabilityError != null) throw availabilityError!;
+    return Availability(venueId: venueId, date: date, timezone: 'Asia/Kolkata', courts: courts, closedReason: closedReason, note: note);
+  }
+
+  @override
+  Future<Quote> quote(String resourceId, DateTime startsAt) async {
+    if (quoteError != null) throw quoteError!;
+    return Quote(
+      resourceId: resourceId,
+      startsAt: startsAt,
+      endsAt: startsAt.add(const Duration(hours: 1)),
+      durationMinutes: 60,
+      currency: 'INR',
+      baseAmountPaise: 50000,
+      feesPaise: 0,
+      taxPaise: 0,
+      discountPaise: 0,
+      totalAmountPaise: 50000,
+      note: '',
+    );
+  }
+
+  @override
+  Future<Booking> create(String resourceId, DateTime startsAt, {required String idempotencyKey}) async {
+    idempotencyKeys.add(idempotencyKey);
+    if (createError != null) {
+      final e = createError!;
+      throw e;
+    }
+    final b = bookingOf('b-new');
+    bookings.insert(0, b);
+    return b;
+  }
+
+  @override
+  Future<BookingPageData> list(String bucket, {required int offset, int limit = 20}) async {
+    if (listError != null) throw listError!;
+    final wanted = switch (bucket) {
+      'upcoming' => ['pending_payment', 'payment_failed', 'confirmed'],
+      'past' => ['completed', 'expired'],
+      _ => ['cancelled_by_customer', 'cancelled_by_owner', 'refund_pending', 'refunded'],
+    };
+    return BookingPageData(items: bookings.where((b) => wanted.contains(b.status)).toList(), hasMore: false);
+  }
+
+  @override
+  Future<Booking> get(String id) async {
+    final found = bookings.where((b) => b.id == id);
+    if (found.isEmpty) throw const ApiException(statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found.');
+    return found.first;
+  }
+
+  @override
+  Future<CancellationPreview> cancellationPreview(String id) async => preview;
+
+  @override
+  Future<Booking> cancel(String id, {String? reason}) async {
+    cancelled.add(id);
+    final i = bookings.indexWhere((b) => b.id == id);
+    bookings[i] = bookingOf(id, status: 'cancelled_by_customer', canCancel: false);
+    return bookings[i];
+  }
+}
+
+PaymentInfo paymentOf({
+  String id = 'p1',
+  String bookingId = 'b1',
+  String status = 'created',
+  bool confirmed = false,
+  bool needsReview = false,
+  String bookingStatus = 'pending_payment',
+  String? failureReason,
+}) =>
+    PaymentInfo(
+      id: id,
+      bookingId: bookingId,
+      bookingCode: 'ZUR-ABCD2345',
+      venueName: 'Ace Arena',
+      resourceName: 'Court 1',
+      amountPaise: 50000,
+      currency: 'INR',
+      status: status,
+      bookingStatus: bookingStatus,
+      bookingPaymentStatus: confirmed ? 'paid' : 'pending',
+      confirmed: confirmed,
+      needsReview: needsReview,
+      failureReason: failureReason,
+      razorpayOrderId: 'order_1',
+      createdAt: DateTime.utc(2030, 1, 1),
+    );
+
+PaymentInfo confirmedPayment({String bookingId = 'b1'}) =>
+    paymentOf(bookingId: bookingId, status: 'captured', confirmed: true, bookingStatus: 'confirmed');
+
+/// Stand-in for the payment API. Counts calls so tests can prove nothing is paid or created twice.
+class FakePaymentRepository implements PaymentRepository {
+  Object? createError;
+  Object? verifyError;
+  Completer<void>? verifyGate; // hold verify open to observe "Verification in progress"
+  PaymentInfo verifyResult = confirmedPayment();
+  List<PaymentInfo> getResults = [confirmedPayment()]; // popped in order; the last one repeats
+  List<PaymentInfo> historyItems = [];
+  Object? historyError;
+
+  final List<String> orders = [];
+  final List<({String orderId, String paymentId, String signature})> verifies = [];
+  int gets = 0;
+
+  @override
+  Future<CreateOrderResult> createOrder(String bookingId) async {
+    orders.add(bookingId);
+    if (createError != null) throw createError!;
+    return CreateOrderResult(
+      payment: paymentOf(bookingId: bookingId),
+      checkout: const CheckoutConfig(
+        keyId: 'rzp_test_fake',
+        orderId: 'order_1',
+        amountPaise: 50000,
+        currency: 'INR',
+        name: 'ZURUV',
+        description: 'Ace Arena · Court 1',
+      ),
+    );
+  }
+
+  @override
+  Future<PaymentInfo> verify({required String orderId, required String paymentId, required String signature}) async {
+    verifies.add((orderId: orderId, paymentId: paymentId, signature: signature));
+    if (verifyGate != null) await verifyGate!.future;
+    if (verifyError != null) {
+      final e = verifyError!;
+      verifyError = null; // fails once; the retry succeeds
+      throw e;
+    }
+    return verifyResult;
+  }
+
+  @override
+  Future<PaymentInfo> get(String paymentId) async {
+    gets++;
+    return getResults.length > 1 ? getResults.removeAt(0) : getResults.first;
+  }
+
+  @override
+  Future<PaymentPageData> history({required int offset, int limit = 20}) async {
+    if (historyError != null) throw historyError!;
+    return PaymentPageData(items: historyItems, hasMore: false);
+  }
+}
+
+/// Scripted Razorpay Checkout: each open() consumes the next result.
+class FakeCheckoutLauncher implements CheckoutLauncher {
+  FakeCheckoutLauncher([List<CheckoutResult>? results]) : results = results ?? [okCheckout()];
+
+  final List<CheckoutResult> results;
+  final List<CheckoutConfig> opened = [];
+
+  @override
+  Future<CheckoutResult> open(CheckoutConfig config) async {
+    opened.add(config);
+    return results.length > 1 ? results.removeAt(0) : results.first;
+  }
+}
+
+CheckoutSuccess okCheckout() => const CheckoutSuccess(orderId: 'order_1', paymentId: 'pay_1', signature: 'sig_1');
+
+class FakeNotificationRepository implements NotificationRepository {
+  List<AppNotification> items = [];
+  Object? listError;
+  final List<String> read = [];
+  int readAll = 0;
+
+  @override
+  Future<NotificationPageData> list({int limit = 50}) async {
+    if (listError != null) throw listError!;
+    return NotificationPageData(items: items, unreadCount: items.where((n) => !n.isRead).length);
+  }
+
+  @override
+  Future<int> unreadCount() async => items.where((n) => !n.isRead).length;
+
+  @override
+  Future<void> markRead(String id) async {
+    read.add(id);
+    items = [
+      for (final n in items)
+        n.id == id
+            ? AppNotification(id: n.id, type: n.type, title: n.title, body: n.body, isRead: true, createdAt: n.createdAt, bookingId: n.bookingId)
+            : n,
+    ];
+  }
+
+  @override
+  Future<void> markAllRead() async {
+    readAll++;
+    items = [
+      for (final n in items)
+        AppNotification(id: n.id, type: n.type, title: n.title, body: n.body, isRead: true, createdAt: n.createdAt, bookingId: n.bookingId),
+    ];
+  }
+}
+
 class FakeProfileRepository implements ProfileRepository {
   FakeProfileRepository({this.preferredCityId});
 
@@ -190,15 +478,27 @@ class TestEnv {
     FakeVenueRepository? venues,
     FakeProfileRepository? profiles,
     FakeLocationService? location,
+    FakeBookingRepository? bookings,
+    FakePaymentRepository? payments,
+    FakeCheckoutLauncher? checkout,
+    FakeNotificationRepository? notifications,
   })  : gateway = gateway ?? FakeAuthGateway(hasSession: true, me: meWith(AppRole.customer)),
         venues = venues ?? FakeVenueRepository(),
         profiles = profiles ?? FakeProfileRepository(),
-        location = location ?? FakeLocationService();
+        location = location ?? FakeLocationService(),
+        bookings = bookings ?? FakeBookingRepository(),
+        payments = payments ?? FakePaymentRepository(),
+        checkout = checkout ?? FakeCheckoutLauncher(),
+        notifications = notifications ?? FakeNotificationRepository();
 
   final FakeAuthGateway gateway;
   final FakeVenueRepository venues;
   final FakeProfileRepository profiles;
   final FakeLocationService location;
+  final FakeBookingRepository bookings;
+  final FakePaymentRepository payments;
+  final FakeCheckoutLauncher checkout;
+  final FakeNotificationRepository notifications;
 
   Future<Widget> app({Map<String, Object> prefs = const {PrefKeys.onboardingDone: true}}) async {
     SharedPreferences.setMockInitialValues(prefs);
@@ -210,6 +510,11 @@ class TestEnv {
         expectedRoleProvider.overrideWithValue(AppRole.customer),
         authUiConfigProvider.overrideWithValue(const AuthUiConfig(appName: 'ZURUV', role: AppRole.customer)),
         venueRepositoryProvider.overrideWithValue(venues),
+        bookingRepositoryProvider.overrideWithValue(bookings),
+        paymentRepositoryProvider.overrideWithValue(payments),
+        checkoutLauncherProvider.overrideWithValue(checkout),
+        notificationRepositoryProvider.overrideWithValue(notifications),
+        pollConfigProvider.overrideWithValue(const PollConfig(interval: Duration.zero, attempts: 3)),
         profileRepositoryProvider.overrideWithValue(profiles),
         locationServiceProvider.overrideWithValue(location),
         avatarServiceProvider.overrideWithValue(FakeAvatarService()),

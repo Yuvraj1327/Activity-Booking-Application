@@ -191,6 +191,8 @@ The latest context lists neither **Supabase Flutter** nor **Pytest**; both were 
 
 ## STAGE 5 — Venue Owner App – UI & Management
 
+> **Status (2026-11-12): implemented, with parts waiting on later stages.** Backend verified by 175 passing tests; Flutter code written but **not compiled, analysed or run** (no SDK available) and no screenshots exist. Real and working against the API: auth and role gate, venue CRUD, image upload/cover/reorder/delete, publish/unpublish, weekly and special opening hours, dashboard venue data and ratings, notifications, business profile. Shown honestly as "not available yet": bookings and booking details (Step 6), revenue/earnings/payouts/payments history (Step 7), booking and utilization analytics (Steps 6/7), reviews (no reviews feature), bank details (storage rules undecided). Decisions D-50…D-58 and open items: `STEP_5_REPORT.md`.
+
 **Objectives**
 - Let owners create and manage their own venues, which is the supply side of the marketplace.
 
@@ -218,6 +220,8 @@ The latest context lists neither **Supabase Flutter** nor **Pytest**; both were 
 ---
 
 ## STAGE 6 — Availability & Booking Engine
+
+> **Status (2026-11-12): implemented; payment-dependent parts wait for Stage 7.** Backend verified by 215 passing tests (40 new, including real-thread concurrency tests); Flutter code written but **not compiled, analysed or run** (no SDK available) and no screenshots exist. Built: availability and slot engine, courts with owner-set slot length and price, blocked periods, bookings with idempotent creation, exclusion-constraint double-booking guard, status history, customer cancellation under configurable rules, schedule-change conflict policy, owner/admin booking views, Customer slot picker/summary/My Bookings/cancel, Owner courts/bookings/dashboard counts. **Not built (waiting for a business answer):** fees/GST/commission/coupons (Q7, Q8, N7), refund and paid-booking cancellation (Q9, Q10), owner cancellation (N22), multi-slot or variable-duration bookings (N2), automatic court assignment (N3), capacity/class bookings (N23), the customer "Today" filter on discovery. Confirmation by payment is Stage 7. Decisions D-59…D-68 and open items: `STEP_6_REPORT.md`.
 
 **Objectives**
 - Make availability and reservation correct under concurrency; this is the core of the platform.
@@ -247,6 +251,8 @@ The latest context lists neither **Supabase Flutter** nor **Pytest**; both were 
 ---
 
 ## STAGE 7 — Payments & Notifications
+
+> **Status (2026-11-12): implemented, within approved rules.** Backend verified by 268 passing tests using fake gateways with real signature logic; Flutter written but **not compiled, analysed or run**; no real Razorpay, Firebase or Resend call made. Built: order creation, checkout-signature verify, signed webhook with idempotency, reconciliation, payment state machine, customer payment/history screens, owner gross earnings and payment list, FCM token registration and push, Resend emails with delivery log, admin payment APIs. **Not built (waiting for a business answer):** refunds and refund execution (Q9), payouts (Q10), fees/GST (Q7), commission (Q8), coupons (N7), KYC (N11), marketplace (N25), owner cancellation (N22), Add to Calendar. Admin web UI is Step 8. Details: `STEP_7_REPORT.md`.
 
 **Objectives**
 - Turn holds into verified, paid bookings, keep money records correct, and keep users informed.

@@ -358,36 +358,10 @@ class _BookBar extends StatelessWidget {
             const SizedBox(width: 20),
             Expanded(
               child: FilledButton(
-                // Booking is Step 6 and later. The button is real, and says so honestly.
-                onPressed: () => _showComingSoon(context, venue.name),
+                onPressed: () => context.push('/venues/${venue.id}/book'),
                 child: const Text('Book Now'),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showComingSoon(BuildContext context, String name) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(Gap.page, 4, Gap.page, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.event_available_rounded, size: 40, color: ZuruvColors.customerPrimary),
-            const SizedBox(height: 12),
-            Text('Booking opens soon', style: Theme.of(sheetContext).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text(
-              'Choosing a time and paying for $name is not available yet. We will let you know here when it is.',
-              textAlign: TextAlign.center,
-              style: Theme.of(sheetContext).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 20),
-            FilledButton(onPressed: () => Navigator.of(sheetContext).pop(), child: const Text('Got it')),
           ],
         ),
       ),

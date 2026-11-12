@@ -45,14 +45,12 @@ void main() {
     expect(find.text('Shower'), findsOneWidget);
   });
 
-  testWidgets('Book Now explains that booking is not available yet', (tester) async {
+  testWidgets('Book Now opens the slot picker with real availability', (tester) async {
     await openDetails(tester);
     await tester.tap(find.text('Book Now'));
     await tester.pumpAndSettle();
-    expect(find.text('Booking opens soon'), findsOneWidget);
-    await tester.tap(find.text('Got it'));
-    await tester.pumpAndSettle();
-    expect(find.text('Booking opens soon'), findsNothing);
+    expect(find.text('Review & book'), findsOneWidget);
+    expect(find.text('Court 1'), findsOneWidget);
   });
 
   testWidgets('a venue with no photo or rating still renders cleanly', (tester) async {
