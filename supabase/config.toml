@@ -1,0 +1,48 @@
+# Supabase CLI configuration for ZURUV (local development stack).
+#
+# STATUS: written from the Supabase CLI config format but NOT executed in Stage 2
+# (the Supabase CLI was not available). Validate with `supabase start` before
+# relying on it. Hosted projects (dev / staging / production) are configured in
+# the Supabase dashboard; see docs/DEVELOPMENT_SETUP.md.
+#
+# Architecture rules this file must respect (docs/SYSTEM_ARCHITECTURE.md):
+#  - Supabase is used for Authentication, PostgreSQL and Storage only.
+#  - The auto-generated data API is NOT used for application data.
+#  - Application schema and RLS are applied through Alembic (backend/alembic),
+#    not through supabase/migrations (see supabase/migrations/README.md).
+
+project_id = "zuruv"
+
+[db]
+port = 54322
+# Must match the Postgres major version of the hosted project. [Verify]
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_confirmations = true   # users must verify their e-mail before they get a session
+min_password_length = 8
+
+# Provider credentials are never stored here. Google / Apple / phone are configured in the
+# dashboard: see docs/AUTHENTICATION_FLOW.md.
+
+[storage]
+enabled = true
+
+# Buckets mirror Alembic revision 0003 (the source of truth for hosted projects).
+# Limits are ASSUMPTIONS pending confirmation (docs/STORAGE_CONFIGURATION.md).
+[storage.buckets.venue-images]
+public = true
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
+
+[storage.buckets.profile-images]
+public = false
+file_size_limit = "2MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]

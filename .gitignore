@@ -1,0 +1,83 @@
+# ---------------------------------------------------------------
+# ZURUV monorepo .gitignore
+# Secrets must never be committed. Only *.example files are tracked.
+# ---------------------------------------------------------------
+
+# --- Secrets and local environment ---
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+**/env/*.json
+!**/env/*.example.json
+*.pem
+*.key
+*.p12
+*.p8
+*.jks
+*.keystore
+key.properties
+**/google-services.json
+**/GoogleService-Info.plist
+service-account*.json
+firebase-adminsdk*.json
+
+# --- Python (backend) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# --- Node / Next.js (admin_web) ---
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+.vercel
+
+# --- Flutter / Dart ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+**/build/
+**/.gradle/
+**/local.properties
+**/Pods/
+**/.symlinks/
+**/xcuserdata/
+**/DerivedData/
+**/ephemeral/
+*.iml
+.idea/
+# Generated platform code is created by scripts/bootstrap_flutter.sh and IS tracked
+# once generated, except build output and local machine files listed above.
+
+# --- Supabase CLI local state ---
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+
+# --- Docker / local data ---
+docker-data/
+*.log
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json

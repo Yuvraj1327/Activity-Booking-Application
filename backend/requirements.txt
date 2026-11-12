@@ -1,0 +1,10 @@
+# Runtime dependencies (direct dependencies pinned; versions verified by a clean install
+# and the test suite in Stage 2). Transitive dependencies are resolved by pip.
+fastapi==0.162.5
+uvicorn[standard]==0.54.0
+SQLAlchemy[asyncio]==2.1.8
+asyncpg==0.32.0
+alembic==1.20.1
+pydantic==2.14.3
+pydantic-settings==2.16.2
+PyJWT[crypto]==2.15.1

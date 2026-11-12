@@ -1,0 +1,30 @@
+# Tool configuration only. Dependencies are in requirements.txt / requirements-dev.txt.
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B008", "E501"]
+"scripts/*" = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "integration: needs a real PostgreSQL (set TEST_DATABASE_URL); skipped otherwise",
+]
+filterwarnings = ["error::DeprecationWarning:app.*"]
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["pydantic.mypy"]
+strict = true
+files = ["app"]
+exclude = ["alembic/"]

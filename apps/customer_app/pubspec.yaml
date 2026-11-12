@@ -1,0 +1,30 @@
+name: zuruv_customer
+description: ZURUV — ZURUV. Discover. Book. Play.
+version: 0.1.0+1
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+  dio: ^5.7.0
+  supabase_flutter: ^2.8.0
+  shared_preferences: ^2.3.4
+  cached_network_image: ^3.4.1
+  geolocator: ^13.0.2
+  image_picker: ^1.1.2
+  flutter_shared:
+    path: ../../packages/flutter_shared
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

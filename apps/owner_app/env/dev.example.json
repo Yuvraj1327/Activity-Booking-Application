@@ -1,0 +1,9 @@
+{
+  "SUPABASE_URL": "",
+  "SUPABASE_ANON_KEY": "",
+  "API_BASE_URL": "http://localhost:8008/api/v1",
+  "AUTH_REDIRECT_URL": "io.zuruv.owner://login-callback",
+  "GOOGLE_AUTH_ENABLED": false,
+  "APPLE_AUTH_ENABLED": false,
+  "PHONE_AUTH_ENABLED": false
+}

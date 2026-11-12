@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-tint: var(--primary-tint);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --radius-lg: 0.75rem;
+  --radius-md: 0.5rem;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ZURUV brand tokens (light theme only). Primary is sampled from the UI reference
+   boards and is approximate; confirm exact values with the brand owner. */
+:root {
+  --background: #ffffff;
+  --foreground: #14151a;
+  --card: #ffffff;
+  --muted: #f6f6f9;
+  --muted-foreground: #686b72;
+  --border: #e4e4ec;
+  --primary: #442edb;
+  --primary-foreground: #ffffff;
+  --primary-tint: #f5f1ff;
+  --destructive: #fa1945;
+  --success: #0caf61;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}

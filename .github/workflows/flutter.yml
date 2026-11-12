@@ -1,0 +1,15 @@
+name: flutter
+on:
+  push: { paths: ["apps/customer_app/**", "apps/owner_app/**", "packages/flutter_shared/**", ".github/workflows/flutter.yml"] }
+  pull_request: { paths: ["apps/customer_app/**", "apps/owner_app/**", "packages/flutter_shared/**"] }
+jobs:
+  analyze-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - run: ./scripts/bootstrap_flutter.sh
+      - run: cd packages/flutter_shared && flutter analyze && flutter test
+      - run: cd apps/customer_app && flutter analyze && flutter test
+      - run: cd apps/owner_app && flutter analyze && flutter test

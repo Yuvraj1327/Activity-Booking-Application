@@ -1,0 +1,46 @@
+# Local development services for ZURUV.
+#
+#   docker compose up -d db          # local PostgreSQL (+PostGIS) only
+#   docker compose --profile api up  # database + backend container
+#
+# Credentials come from the root .env file (copy .env.example). Nothing is
+# hardcoded. The hosted database in every real environment is Supabase.
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      - zuruv_db_data:/var/lib/postgresql/data
+      # Plain Postgres has no Supabase pieces; this recreates just what the migrations need.
+      # LOCAL ONLY. Runs on first start of an empty volume.
+      - ./supabase/local/supabase_stub.sql:/docker-entrypoint-initdb.d/10_supabase_stub.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    profiles: ["api"]
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      # Inside Compose the database host is the service name, not localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      - "8008:8008"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  zuruv_db_data:
