@@ -74,7 +74,7 @@ Real: venue totals/published/draft, review-count-weighted average rating, per-ve
 
 ```bash
 ./scripts/bootstrap_flutter.sh
-cd apps/owner_app && cp env/dev.example.json env/dev.json   # public values only
-flutter run --dart-define-from-file=env/dev.json
+cd apps/owner_app && cp .env.example .env   # public values only
+flutter run
 ```
 Backend (for the app to talk to): `cd backend && source .venv/bin/activate && alembic upgrade head && python -m scripts.seed_reference_data && uvicorn app.main:app --port 8008` with `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWT_SECRET` (or JWKS) and `SUPABASE_SERVICE_ROLE_KEY` set.

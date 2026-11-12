@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_shared/flutter_shared.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zuruv_owner/features/venue_form/venue_form_screen.dart';
@@ -109,6 +110,40 @@ void main() {
     await tester.pumpAndSettle();
     await reveal(tester, find.text('Between -180 and 180'), delta: -200);
     expect(find.text('Between -180 and 180'), findsOneWidget);
+  });
+
+  testWidgets('address search fills address, postal code and coordinates', (tester) async {
+    final repo = FakeOwnerRepository();
+    await openVenues(tester, TestEnv(repo: repo));
+    await tester.tap(find.text('Add venue'));
+    await tester.pumpAndSettle();
+    await reveal(tester, find.text('Search address'));
+    await tester.tap(find.text('Search address'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Venue address or landmark'), 'Ace Arena');
+    await tester.tap(find.byTooltip('Search'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ace Arena Road, Pune'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ace Arena Road, Pune 411001'), findsOneWidget);
+    expect(find.text('18.52'), findsOneWidget);
+    expect(find.text('73.85'), findsOneWidget);
+  });
+
+  testWidgets('address search says so when the server has no Google key', (tester) async {
+    final repo = FakeOwnerRepository()
+      ..placesFail = const PlacesFail(ApiException(
+          statusCode: 503, code: 'PLACES_NOT_CONFIGURED', message: 'Address search is not configured yet.'));
+    await openVenues(tester, TestEnv(repo: repo));
+    await tester.tap(find.text('Add venue'));
+    await tester.pumpAndSettle();
+    await reveal(tester, find.text('Search address'));
+    await tester.tap(find.text('Search address'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Venue address or landmark'), 'Ace');
+    await tester.tap(find.byTooltip('Search'));
+    await tester.pumpAndSettle();
+    expect(find.text('Address search is not configured yet.'), findsOneWidget);
   });
 
   testWidgets('edit venue: loads values, sends changes, clears emptied optional fields', (tester) async {

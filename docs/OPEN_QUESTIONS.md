@@ -82,7 +82,7 @@ Every item below is explained further, with why it matters, in the sections that
 | Q15 | May reviews be written only after completed bookings? | Review integrity rules, DB constraints. | Stage 8 | Soon |
 | Q16 | May special hours override existing bookings? | Conflict handling; may require cancelling/refunding customers. | Stage 6 | **Blocker** |
 | Q17 | Are multiple resources/courts supported in one venue? | See Q1; also "2 Courts" bookings. | Stage 3 | **Blocker** |
-| Q18 | Admin moderation and account-suspension permissions? | Admin RBAC, effects of suspending a vendor with future bookings. | Stage 8 | Soon |
+| Q18 | Admin moderation and account-suspension permissions? | Admin RBAC, effects of suspending a vendor with future bookings. | Stage 8 | **Still open.** Step 8 ships the conservative default: suspend/reactivate only, audited, no booking side effects, no "inactive" state, no listing edits. |
 
 ---
 

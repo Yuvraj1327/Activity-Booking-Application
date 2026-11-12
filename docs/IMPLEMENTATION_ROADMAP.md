@@ -379,3 +379,7 @@ The latest context lists neither **Supabase Flutter** nor **Pytest**; both were 
 | Store review and account approval delays | Open accounts in Stage 1; early internal tracks |
 | Per-instance rate limiting is weaker across replicas | Idempotency and database constraints; test in Stage 9 |
 | Production on a free Supabase tier | Paid plan required for production **[Verify limits]** |
+
+## Stage 8 status
+
+> **Status (2026-11-12): implemented.** Admin web (dashboard, analytics, owners, customers, venues, bookings, payments, notifications, audit log, CSV exports) over the new `/api/v1/admin` API. Verified by 307 backend tests, 26 vitest tests and 81 Playwright tests (desktop and tablet) against a real FastAPI and Postgres; Supabase Auth mocked in e2e; Flutter untouched. **Not built (waiting for a business answer):** platform revenue, owner earnings, refunds (Q7–Q10), "inactive" status and suspension side effects (Q18). Report: `STEP_8_REPORT.md`. Stage 9 needs explicit approval.

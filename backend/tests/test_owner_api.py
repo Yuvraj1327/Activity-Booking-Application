@@ -316,7 +316,8 @@ def test_pending_endpoints_are_honest(api, clean_db):
     # Step 7: real gross amounts (none yet), deductions/payouts honestly unavailable
     assert e["gross_paid_paise"] == 0 and e["payments_count"] == 0
     assert e["deductions"]["available"] is False and e["payouts"]["available"] is False
-    assert api.get(f"{B}/reviews", headers=h).json()["available"] is False
+    rv = api.get(f"{B}/reviews", headers=h).json()  # Step 10: real reviews feature, none yet
+    assert rv["items"] == [] and rv["summary"]["count"] == 0 and rv["summary"]["average"] is None
     a = api.get(f"{B}/analytics", params={"date_from": "2030-02-01", "date_to": "2030-01-01"}, headers=h)
     assert a.status_code == 422 and a.json()["code"] == "INVALID_DATE_RANGE"
     assert api.get(f"{B}/analytics", headers=h).json()["total_bookings"]["available"] is False

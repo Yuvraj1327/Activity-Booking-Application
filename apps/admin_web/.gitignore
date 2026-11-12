@@ -5,3 +5,8 @@ next-env.d.ts
 *.tsbuildinfo
 .env*
 !.env.example
+
+# Playwright
+/e2e/.stack/
+/e2e/report/
+/test-results/

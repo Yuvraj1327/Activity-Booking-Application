@@ -19,12 +19,14 @@ None of these files may be committed. Only the `*.example` files are tracked.
 | `SUPABASE_JWT_SECRET` | no | Only for projects that sign with a legacy shared HS256 secret. |
 | `SUPABASE_JWKS_URL`, `SUPABASE_JWT_ISSUER`, `SUPABASE_JWT_AUDIENCE` | no | Overrides. Audience defaults to `authenticated`. |
 | `ADMIN_REQUIRE_MFA` | no | `true`/`false`. Empty = required in staging/production only. Admin endpoints then need an `aal2` session. |
+| `ADMIN_REPORT_TIMEZONE` | no | IANA zone used to cut days in admin reports. Default `Asia/Kolkata`. |
+| `ADMIN_EXPORT_MAX_ROWS` | no | Cap on rows in an admin CSV export. Default 20000 (1–200000). |
 | `TEST_DATABASE_URL` | tests | Superuser URL of a **throwaway** Postgres for the DB tests (not Supabase). Without it DB tests are skipped. |
 | `ALEMBIC_DATABASE_URL` | no | Direct/session connection for `alembic upgrade head` (falls back to `DATABASE_URL`). |
 
 \* In production either `SUPABASE_URL` or `SUPABASE_JWT_SECRET` must be set.
 
-## Flutter apps — `apps/<app>/env/dev.json` (passed with `--dart-define-from-file`)
+## Flutter apps — `apps/<app>/.env` (loaded with `flutter_dotenv`; copy from `.env.example`)
 
 | Variable | Notes |
 |---|---|
@@ -70,4 +72,12 @@ Real credentials are never committed and never placed in Flutter or in `NEXT_PUB
 | `BACKGROUND_SWEEP_SECONDS` | Default 60; `0` disables the in-process retry/reconciliation loop. |
 | `PAYMENT_RECONCILE_AFTER_MINUTES` | Default 3; open payments older than this are reconciled with Razorpay by the sweep. |
 
-Flutter apps: Firebase is configured through the native `google-services.json` / `GoogleService-Info.plist` (not in git). No Razorpay secret and no service account ever goes in `dev.json`.
+Flutter apps: Firebase is configured through the native `google-services.json` / `GoogleService-Info.plist` (not in git). No Razorpay secret and no service account ever goes in `.env`.
+
+## Admin web (`apps/admin_web/.env.local`)
+
+| Variable | Public? | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Anon key only. Never the service-role key. |
+| `NEXT_PUBLIC_API_BASE_URL` | yes | FastAPI base, e.g. `http://localhost:8008/api/v1`. |
+| `ADMIN_REPORT_TIMEZONE` / `NEXT_PUBLIC_ADMIN_REPORT_TIMEZONE` | no / yes | Should match the backend value. Default `Asia/Kolkata`. |

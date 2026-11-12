@@ -36,7 +36,7 @@ cd apps/admin_web && cp .env.example .env.local && npm install && npm run dev   
 
 # Flutter apps (needs Flutter >= 3.27)
 ./scripts/bootstrap_flutter.sh
-cd apps/customer_app && cp env/dev.example.json env/dev.json && flutter run --dart-define-from-file=env/dev.json
+cd apps/customer_app && cp .env.example .env && flutter run
 ```
 
 `make help` lists the shortcut targets.

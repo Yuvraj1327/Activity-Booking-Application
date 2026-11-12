@@ -20,10 +20,12 @@ from app.core.config import Settings, get_settings
 from app.core.errors import REQUEST_ID_HEADER, register_exception_handlers
 from app.core.logging import setup_logging
 from app.core.middleware import RequestContextMiddleware
+from app.core.ratelimit import RateLimitMiddleware
 from app.core.security import build_jwt_verifier
 from app.database.health import check_database
 from app.database.session import Database
 from app.gateways.fcm import FcmSender
+from app.gateways.places import GooglePlaces
 from app.gateways.razorpay import RazorpayGateway
 from app.gateways.resend import ResendSender
 from app.schemas.common import DatabaseStatus, ErrorResponse, HealthResponse
@@ -51,6 +53,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.push_sender = FcmSender(settings)
         if not hasattr(app.state, "email_sender"):
             app.state.email_sender = ResendSender(settings)
+        if not hasattr(app.state, "places_gateway"):
+            app.state.places_gateway = GooglePlaces(settings)
         sweeper = None
         if settings.background_sweep_seconds and app.state.db.configured:
             sweeper = asyncio.create_task(sweep_loop(app, settings.background_sweep_seconds))
@@ -93,6 +97,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.payment_gateway = RazorpayGateway(settings)
     app.state.push_sender = FcmSender(settings)
     app.state.email_sender = ResendSender(settings)
+    app.state.places_gateway = GooglePlaces(settings)
 
     register_exception_handlers(app)
 
@@ -106,6 +111,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_headers=["Authorization", "Content-Type", "Idempotency-Key", REQUEST_ID_HEADER],
             expose_headers=[REQUEST_ID_HEADER],
         )
+    app.add_middleware(
+        RateLimitMiddleware, prefix=settings.api_v1_prefix, per_minute=settings.rate_limit_per_minute
+    )
     app.add_middleware(RequestContextMiddleware)
 
     @app.get("/health", response_model=HealthResponse, tags=["health"], summary="Liveness and DB check")

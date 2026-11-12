@@ -36,6 +36,7 @@ class VenueFilters:
     sort: str = "popular"
     limit: int = 20
     offset: int = 0
+    available_today: bool = False
 
 
 def _escape_like(text: str) -> str:

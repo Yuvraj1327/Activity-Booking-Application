@@ -190,11 +190,18 @@ class OwnerRepository {
         return OwnerPaymentPage.fromJson(res.data!);
       });
 
-  Future<PendingFeature> reviews() => _pending('/owners/reviews');
+  Future<OwnerReviewPage> reviews({int? rating, int offset = 0}) => apiCall(() async {
+        final res = await _dio.get<Map<String, dynamic>>('/owners/reviews', queryParameters: {
+          if (rating != null) 'rating': rating,
+          'offset': offset,
+        });
+        return OwnerReviewPage.fromJson(res.data!);
+      });
 
-  Future<PendingFeature> _pending(String path, [Map<String, dynamic>? query]) => apiCall(() async {
-        final res = await _dio.get<Map<String, dynamic>>(path, queryParameters: query);
-        return PendingFeature.fromJson(res.data!);
+  /// One reply per review; the server refuses a second one.
+  Future<OwnerReview> replyToReview(String reviewId, String body) => apiCall(() async {
+        final res = await _dio.post<Map<String, dynamic>>('/owners/reviews/$reviewId/reply', data: {'body': body});
+        return OwnerReview.fromJson(res.data!);
       });
 
   // ---- notifications
@@ -209,10 +216,43 @@ class OwnerRepository {
 
   Future<void> markRead(String id) => apiCall(() => _dio.post<void>('/owners/notifications/$id/read'));
   Future<void> markAllRead() => apiCall(() => _dio.post<void>('/owners/notifications/read-all'));
+
+  /// Server-side delivery switches (`GET/PUT /notifications/preferences`): push and e-mail.
+  Future<NotificationChannels> notificationChannels() => apiCall(() async {
+        final res = await _dio.get<Map<String, dynamic>>('/notifications/preferences');
+        return NotificationChannels.fromJson(res.data!);
+      });
+
+  Future<NotificationChannels> setNotificationChannels({bool? push, bool? email}) => apiCall(() async {
+        final res = await _dio.put<Map<String, dynamic>>('/notifications/preferences', data: {
+          if (push != null) 'push_enabled': push,
+          if (email != null) 'email_enabled': email,
+        });
+        return NotificationChannels.fromJson(res.data!);
+      });
 }
 
-final ownerRepositoryProvider = Provider<OwnerRepository>((ref) => OwnerRepository(ref.watch(apiClientProvider)));
+class NotificationChannels {
+  const NotificationChannels({required this.push, required this.email});
 
-final citiesProvider = FutureProvider<List<City>>((ref) => ref.watch(ownerRepositoryProvider).cities());
-final categoriesProvider = FutureProvider<List<Category>>((ref) => ref.watch(ownerRepositoryProvider).categories());
-final amenitiesProvider = FutureProvider<List<Amenity>>((ref) => ref.watch(ownerRepositoryProvider).amenities());
+  factory NotificationChannels.fromJson(Map<String, dynamic> j) =>
+      NotificationChannels(push: j['push_enabled'] as bool, email: j['email_enabled'] as bool);
+
+  final bool push;
+  final bool email;
+
+  /// Address suggestions (`GET /places/autocomplete`). The Google key stays on the server; a
+  /// 503 `PLACES_NOT_CONFIGURED` surfaces as an [ApiException] the UI explains.
+  Future<List<PlaceSuggestion>> searchPlaces(String q, {String? sessionToken}) => apiCall(() async {
+        final res = await _dio.get<List<dynamic>>('/places/autocomplete', queryParameters: {
+          'q': q,
+          if (sessionToken != null) 'session_token': sessionToken,
+        });
+        return [for (final e in res.data!) PlaceSuggestion.fromJson(e as Map<String, dynamic>)];
+      });
+
+  Future<PlaceDetails> placeDetails(String placeId) => apiCall(() async {
+        final res = await _dio.get<Map<String, dynamic>>('/places/$placeId');
+        return PlaceDetails.fromJson(res.data!);
+      });
+}

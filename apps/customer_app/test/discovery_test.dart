@@ -126,10 +126,15 @@ void main() {
       expect(env.venues.queries.last.maxPricePaise, isNull);
     });
 
-    testWidgets('"Today" is disabled until booking exists', (tester) async {
-      await openExplore(tester);
-      final chip = tester.widget<FilterChip>(find.widgetWithText(FilterChip, 'Today'));
-      expect(chip.onSelected, isNull);
+    testWidgets('"Today" asks the backend for venues with a slot left today', (tester) async {
+      final env = await openExplore(tester);
+      expect(env.venues.queries.last.availableToday, isFalse);
+      await tester.tap(find.widgetWithText(FilterChip, 'Today'));
+      await tester.pumpAndSettle();
+      expect(env.venues.queries.last.availableToday, isTrue);
+      await tester.tap(find.widgetWithText(FilterChip, 'Today'));
+      await tester.pumpAndSettle();
+      expect(env.venues.queries.last.availableToday, isFalse);
     });
 
     testWidgets('Near Me with permission denied keeps the app usable and explains why', (tester) async {

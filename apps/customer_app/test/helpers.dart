@@ -7,6 +7,7 @@ import 'package:flutter_shared/flutter_shared.dart';
 import 'package:flutter_shared/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zuruv_customer/features/venue_details/directions_launcher.dart';
 import 'package:zuruv_customer/app.dart';
 import 'package:zuruv_customer/core/config/app_config.dart';
 import 'package:zuruv_customer/core/storage/preferences.dart';
@@ -17,12 +18,14 @@ import 'package:zuruv_customer/features/payments/payment_flow.dart';
 import 'package:zuruv_customer/shared/models/app_notification.dart';
 import 'package:zuruv_customer/shared/models/booking.dart';
 import 'package:zuruv_customer/shared/models/payment.dart';
+import 'package:zuruv_customer/shared/models/review.dart';
 import 'package:zuruv_customer/shared/models/catalog.dart';
 import 'package:zuruv_customer/shared/models/venue.dart';
 import 'package:zuruv_customer/shared/repositories/booking_repository.dart';
 import 'package:zuruv_customer/shared/repositories/notification_repository.dart';
 import 'package:zuruv_customer/shared/repositories/payment_repository.dart';
 import 'package:zuruv_customer/shared/repositories/profile_repository.dart';
+import 'package:zuruv_customer/shared/repositories/review_repository.dart';
 import 'package:zuruv_customer/shared/repositories/venue_repository.dart';
 
 const bengaluru = City(id: 'c-blr', name: 'Bengaluru', state: 'Karnataka');
@@ -346,6 +349,17 @@ class FakePaymentRepository implements PaymentRepository {
 }
 
 /// Scripted Razorpay Checkout: each open() consumes the next result.
+class FakeDirectionsLauncher implements DirectionsLauncher {
+  final List<(double, double)> opened = [];
+  bool succeeds = true;
+
+  @override
+  Future<bool> open({required double latitude, required double longitude}) async {
+    opened.add((latitude, longitude));
+    return succeeds;
+  }
+}
+
 class FakeCheckoutLauncher implements CheckoutLauncher {
   FakeCheckoutLauncher([List<CheckoutResult>? results]) : results = results ?? [okCheckout()];
 
@@ -360,6 +374,34 @@ class FakeCheckoutLauncher implements CheckoutLauncher {
 }
 
 CheckoutSuccess okCheckout() => const CheckoutSuccess(orderId: 'order_1', paymentId: 'pay_1', signature: 'sig_1');
+
+class FakeReviewRepository implements ReviewRepository {
+  FakeReviewRepository({List<Review>? venueReviews}) : venueList = venueReviews ?? [];
+
+  final List<Review> venueList;
+  final Map<String, Review> mine = {};
+  final List<String> submitted = [];
+
+  @override
+  Future<ReviewPageData> venueReviews(String venueId, {int offset = 0, int limit = 20}) async {
+    final avg = venueList.isEmpty ? null : venueList.fold<int>(0, (a, r) => a + r.rating) / venueList.length;
+    return ReviewPageData(items: venueList, summary: RatingSummary(average: avg, count: venueList.length), hasMore: false);
+  }
+
+  @override
+  Future<Review?> myReview(String bookingId) async => mine[bookingId];
+
+  @override
+  Future<Review> submit(String bookingId, {required int rating, String? comment}) async {
+    submitted.add('$bookingId:$rating:${comment ?? ''}');
+    final r = Review(
+      id: 'rv$rating', rating: rating, comment: (comment == null || comment.trim().isEmpty) ? null : comment.trim(),
+      reviewerName: 'Cathy C.', createdAt: DateTime(2030, 1, 1), replyBody: null,
+    );
+    mine[bookingId] = r;
+    return r;
+  }
+}
 
 class FakeNotificationRepository implements NotificationRepository {
   List<AppNotification> items = [];
@@ -482,6 +524,8 @@ class TestEnv {
     FakePaymentRepository? payments,
     FakeCheckoutLauncher? checkout,
     FakeNotificationRepository? notifications,
+    FakeReviewRepository? reviews,
+    FakeDirectionsLauncher? directions,
   })  : gateway = gateway ?? FakeAuthGateway(hasSession: true, me: meWith(AppRole.customer)),
         venues = venues ?? FakeVenueRepository(),
         profiles = profiles ?? FakeProfileRepository(),
@@ -489,7 +533,9 @@ class TestEnv {
         bookings = bookings ?? FakeBookingRepository(),
         payments = payments ?? FakePaymentRepository(),
         checkout = checkout ?? FakeCheckoutLauncher(),
-        notifications = notifications ?? FakeNotificationRepository();
+        notifications = notifications ?? FakeNotificationRepository(),
+        reviews = reviews ?? FakeReviewRepository(),
+        directions = directions ?? FakeDirectionsLauncher();
 
   final FakeAuthGateway gateway;
   final FakeVenueRepository venues;
@@ -499,6 +545,8 @@ class TestEnv {
   final FakePaymentRepository payments;
   final FakeCheckoutLauncher checkout;
   final FakeNotificationRepository notifications;
+  final FakeReviewRepository reviews;
+  final FakeDirectionsLauncher directions;
 
   Future<Widget> app({Map<String, Object> prefs = const {PrefKeys.onboardingDone: true}}) async {
     SharedPreferences.setMockInitialValues(prefs);
@@ -514,6 +562,8 @@ class TestEnv {
         paymentRepositoryProvider.overrideWithValue(payments),
         checkoutLauncherProvider.overrideWithValue(checkout),
         notificationRepositoryProvider.overrideWithValue(notifications),
+        reviewRepositoryProvider.overrideWithValue(reviews),
+        directionsLauncherProvider.overrideWithValue(directions),
         pollConfigProvider.overrideWithValue(const PollConfig(interval: Duration.zero, attempts: 3)),
         profileRepositoryProvider.overrideWithValue(profiles),
         locationServiceProvider.overrideWithValue(location),

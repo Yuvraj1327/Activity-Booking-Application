@@ -1,7 +1,10 @@
 from collections.abc import Sequence
+from dataclasses import replace
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import Row
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +20,10 @@ from app.schemas.catalog import (
     VenueImageOut,
     VenuePage,
 )
+from app.services.availability import AvailabilityService
+
+AVAILABLE_TODAY_BATCH = 25
+AVAILABLE_TODAY_SCAN_LIMIT = 150
 
 
 def public_image_url(settings: Settings, storage_path: str | None) -> str | None:
@@ -34,6 +41,7 @@ def _num(value: Decimal | float | None) -> float | None:
 class VenueService:
     def __init__(self, session: AsyncSession, settings: Settings) -> None:
         self.repo = VenueRepository(session)
+        self.session = session
         self.settings = settings
 
     def _card(self, row: Row[Any], slugs: list[str]) -> VenueCard:
@@ -77,7 +85,36 @@ class VenueService:
             raise ValidationFailedError("radius_km needs lat and lng.", code="LOCATION_REQUIRED")
         if f.min_price is not None and f.max_price is not None and f.min_price > f.max_price:
             raise ValidationFailedError("min_price cannot exceed max_price.", code="INVALID_PRICE_RANGE")
+        if f.available_today:
+            return await self._available_today(f, customer_id)
         return await self._page(await self.repo.search(f, customer_id), f.limit, f.offset)
+
+    async def _available_today(self, f: VenueFilters, customer_id: UUID | None) -> VenuePage:
+        """Venues with at least one bookable slot left today (venue-local day), by the real slot engine.
+
+        Filtering happens after the normal search order, in batches, so paging is over the filtered
+        list. At most SCAN_LIMIT candidates are examined per request (a bound on work, documented in
+        STEP_10 notes); a result past that window is simply not reached.
+        """
+        need = f.offset + f.limit + 1
+        kept: list[Row[Any]] = []
+        scanned = 0
+        now = datetime.now(UTC)
+        availability = AvailabilityService(self.session, self.settings)
+        while len(kept) < need and scanned < AVAILABLE_TODAY_SCAN_LIMIT:
+            batch = min(AVAILABLE_TODAY_BATCH, AVAILABLE_TODAY_SCAN_LIMIT - scanned)
+            rows = await self.repo.search(
+                replace(f, limit=batch, offset=scanned, available_today=False), customer_id
+            )
+            page = rows[:batch]
+            for row in page:
+                today = now.astimezone(ZoneInfo(row.Venue.timezone)).date()
+                if (await availability.dates(row.Venue.id, today, today, now)).dates:
+                    kept.append(row)
+            scanned += len(page)
+            if len(rows) <= batch:
+                break
+        return await self._page(kept[f.offset : f.offset + f.limit + 1], f.limit, f.offset)
 
     async def venue_detail(
         self, venue_id: UUID, customer_id: UUID | None, lat: float | None, lng: float | None

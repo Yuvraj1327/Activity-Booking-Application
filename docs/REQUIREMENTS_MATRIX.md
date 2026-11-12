@@ -127,3 +127,30 @@ DB names below are working names, finalised in Stage 3.
 | R-096 | Performance and scalability | — | The platform responds quickly and scales through pagination, indexes and efficient queries. | Pagination, image optimisation | Indexed queries, caching of read-mostly data | indexes | High | Targets set in N18; availability endpoint within agreed latency under load test | Confirmed | Brief §12 |
 | R-097 | Deployment configuration | — | The system can be deployed repeatedly to development, staging and production. | Build pipelines for apps | CI/CD, environments (dev/staging/prod), migrations | — | High | Reproducible deploy from clean checkout; staging mirrors production | Confirmed | Brief §12 |
 | R-098 | Accessibility | ALL | Interfaces use accessible typography, contrast and touch targets. | Dynamic type, contrast, labels, touch targets | — | — | High | Target level per N16 verified on key flows | Confirmed | Brief §8 |
+
+---
+
+## Step 9 verification status (2026-11-12)
+
+Verification only; no requirement text changed. Details: `STEP_9_TEST_REPORT.md`, `END_TO_END_WORKFLOWS.md`.
+
+| Area | Requirements | Verified |
+|---|---|---|
+| Identity, roles, admin protection (R-001..R-006) | Backend authorization, JWT, RLS, admin self-assignment blocked | Tested on local Postgres; real Supabase Auth **not run** |
+| Discovery, venue detail | API behaviour | Tested; Flutter UI **not run** |
+| Owner venue management | API, ownership isolation, uploads | Tested against fakes; real Storage **not run** |
+| Booking engine | No double booking, holds, server price | Tested incl. concurrency |
+| Payments | Signature, webhook, idempotency, failure handling | Tested with fake gateway; real Razorpay **not run** |
+| Cancellation and refunds | Waiting for Q9/Q10 | Paid-booking cancel refused; no refund exists |
+| Admin console | Monitoring, exports, audit | Tested (API and Playwright) |
+| Notifications | Outbox and delivery | Tested with fakes; real FCM/Resend **not run** |
+| Rate limiting, secrets hygiene | New in Step 9 | Tested |
+
+### Step 10 changes
+
+| Requirement | Change | Verified |
+|---|---|---|
+| R-050 Submit review | Built (completed booking, once, rating 1-5) under the conservative reading of Q15 | Backend tested (9 tests); Flutter form written, **not compiled** |
+| R-051 Show ratings and reviews | Venue reviews API, owner reviews screen, venue page section, DB-maintained aggregate | Backend tested; Flutter **not compiled** |
+| R-052 Owner response | One reply per review, no editing (N14 open) | Backend tested; Flutter **not compiled** |
+| Customer "Today" filter | Built on the slot engine | Backend tested; Flutter **not compiled** |

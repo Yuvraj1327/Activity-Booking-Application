@@ -197,6 +197,7 @@ class VenueQuery {
     this.sort = VenueSort.popular,
     this.pageSize = 20,
     this.favoritesOnly = false,
+    this.availableToday = false,
   });
 
   final String? text;
@@ -211,7 +212,11 @@ class VenueQuery {
   final int pageSize;
   final bool favoritesOnly;
 
-  bool get hasFilters => category != null || minPricePaise != null || maxPricePaise != null || radiusKm != null;
+  /// Only venues with a bookable slot left today (decided by the backend's slot engine).
+  final bool availableToday;
+
+  bool get hasFilters =>
+      category != null || minPricePaise != null || maxPricePaise != null || radiusKm != null || availableToday;
 
   Map<String, dynamic> toParams({required int offset}) => {
         if (text != null && text!.trim().isNotEmpty) 'q': text!.trim(),
@@ -221,6 +226,7 @@ class VenueQuery {
         if (maxPricePaise != null) 'max_price': maxPricePaise,
         if (lat != null && lng != null) ...{'lat': lat, 'lng': lng},
         if (radiusKm != null) 'radius_km': radiusKm,
+        if (availableToday) 'available_today': true,
         'sort': sort.apiValue,
         'limit': pageSize,
         'offset': offset,
@@ -238,6 +244,7 @@ class VenueQuery {
     VenueSort? sort,
     int? pageSize,
     bool? favoritesOnly,
+    bool? availableToday,
   }) {
     return VenueQuery(
       text: identical(text, _keep) ? this.text : text as String?,
@@ -251,6 +258,7 @@ class VenueQuery {
       sort: sort ?? this.sort,
       pageSize: pageSize ?? this.pageSize,
       favoritesOnly: favoritesOnly ?? this.favoritesOnly,
+      availableToday: availableToday ?? this.availableToday,
     );
   }
 
@@ -269,7 +277,8 @@ class VenueQuery {
       other.radiusKm == radiusKm &&
       other.sort == sort &&
       other.pageSize == pageSize &&
-      other.favoritesOnly == favoritesOnly;
+      other.favoritesOnly == favoritesOnly &&
+      other.availableToday == availableToday;
 
   @override
   int get hashCode => Object.hash(
@@ -284,5 +293,6 @@ class VenueQuery {
         sort,
         pageSize,
         favoritesOnly,
+        availableToday,
       );
 }

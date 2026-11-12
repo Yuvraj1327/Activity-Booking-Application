@@ -6,8 +6,10 @@ import 'package:zuruv_customer/shared/models/venue.dart';
 
 import 'helpers.dart';
 
-VenueDetail detail({String id = 'v1', String? description, bool favorite = false}) => VenueDetail(
+VenueDetail detail({String id = 'v1', String? description, bool favorite = false, bool coords = false}) => VenueDetail(
       id: id,
+      latitude: coords ? 12.93 : null,
+      longitude: coords ? 77.62 : null,
       name: 'Ace Arena',
       cityName: 'Bengaluru',
       addressLine: '80 Feet Rd, Koramangala',
@@ -43,6 +45,31 @@ void main() {
     await tester.scrollUntilVisible(find.text('Facilities & amenities'), 300, scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first);
     expect(find.text('Parking'), findsOneWidget);
     expect(find.text('Shower'), findsOneWidget);
+  });
+
+  testWidgets('Directions opens maps at the venue coordinates, only when it has them', (tester) async {
+    final env = await openDetails(tester, details: {'v1': detail(coords: true)});
+    await tester.ensureVisible(find.text('Directions'));
+    await tester.tap(find.text('Directions'));
+    await tester.pumpAndSettle();
+    expect(env.directions.opened, [(12.93, 77.62)]);
+  });
+
+  testWidgets('no Directions button without coordinates', (tester) async {
+    await openDetails(tester);
+    expect(find.text('Directions'), findsNothing);
+  });
+
+  testWidgets('Directions says so when no maps app can be opened', (tester) async {
+    final env = TestEnv(venues: FakeVenueRepository(details: {'v1': detail(coords: true)}));
+    env.directions.succeeds = false;
+    await env.pump(tester);
+    await tester.tap(find.text('Ace Arena').first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Directions'));
+    await tester.tap(find.text('Directions'));
+    await tester.pumpAndSettle();
+    expect(find.text('Could not open maps on this device.'), findsOneWidget);
   });
 
   testWidgets('Book Now opens the slot picker with real availability', (tester) async {

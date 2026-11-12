@@ -41,6 +41,7 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
   int? _maxPrice;
   VenueSort _sort = VenueSort.popular;
   bool _nearMe = false;
+  bool _today = false;
 
   @override
   void initState() {
@@ -74,6 +75,7 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
       radiusKm: nearMe ? AppConfig.nearbyRadiusKm : null,
       sort: nearMe && _sort == VenueSort.popular ? VenueSort.distance : _sort,
       pageSize: AppConfig.pageSize,
+      availableToday: _today,
     );
   }
 
@@ -103,6 +105,7 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
       _maxPrice = null;
       _sort = VenueSort.popular;
       _nearMe = false;
+      _today = false;
     });
   }
 
@@ -153,6 +156,7 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
   bool get _hasActiveFilters =>
       _text.isNotEmpty ||
       _nearMe ||
+      _today ||
       _minPrice != null ||
       _maxPrice != null ||
       _sort != VenueSort.popular ||
@@ -236,10 +240,10 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
                   onSelected: location.locating ? null : _toggleNearMe,
                 ),
                 const SizedBox(width: 8),
-                // Needs availability data, which arrives with booking. Disabled on purpose.
-                const Tooltip(
-                  message: 'Available with booking, coming soon',
-                  child: FilterChip(label: Text('Today'), selected: false, onSelected: null),
+                FilterChip(
+                  label: const Text('Today'),
+                  selected: _today,
+                  onSelected: (selected) => setState(() => _today = selected),
                 ),
                 const SizedBox(width: 8),
                 FilterChip(

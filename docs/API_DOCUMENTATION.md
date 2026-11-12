@@ -156,6 +156,10 @@ Details: `RAZORPAY_INTEGRATION.md`, `PAYMENT_STATUS_FLOW.md`, `NOTIFICATION_ARCH
 | `GET/PUT /notifications/preferences` `{push_enabled, email_enabled}` | any role | Defaults: both on. |
 | `PUT /devices/token` `{token, platform, app}`, `POST /devices/token/remove` `{token}` | any role | Idempotent upsert / sign-out removal. A token re-registered by another account moves to it. |
 
+### Admin (Step 8, admin only)
+
+Full reference: `ADMIN_API_DOCUMENTATION.md`. Routes under `/admin`: `me`, `dashboard`, `analytics/{bookings,revenue,platform}`, `activity`, `owners[/{id}[/status]]`, `customers[/{id}[/status]]`, `venues[/{id}]`, `bookings[/{id}]`, `payments[/summary|/{id}]`, `exports/{bookings,payments,customers,owners}.csv`, `audit-logs`. Read-only except the two audited `PATCH …/status` calls.
+
 ## Differences from the Step 1 catalogue
 
 Step 1 proposed `GET /v1/me`, `POST /v1/auth/register/customer|owner`, `GET|PATCH /v1/customer/profile` and `/v1/owner/profile`. Step 3 follows the paths in the Step 3 brief instead (`/auth/me`, `/auth/profile`, `/customers/me`, `/owners/me`) under the Step 2 prefix `/api/v1`. Not implemented (belong to later steps or open questions): `DELETE /me` (account deletion, N17), device tokens (Step 7).

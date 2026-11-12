@@ -89,8 +89,8 @@ uvicorn app.main:app --port 8008
 
 # app
 cd apps/customer_app
-cp env/dev.example.json env/dev.json           # add SUPABASE_URL, SUPABASE_ANON_KEY; Android emulator: API_BASE_URL=http://10.0.2.2:8008/api/v1
-flutter run --dart-define-from-file=env/dev.json
+cp .env.example .env           # add SUPABASE_URL, SUPABASE_ANON_KEY; Android emulator: API_BASE_URL=http://10.0.2.2:8008/api/v1
+flutter run
 ```
 
 ## Files

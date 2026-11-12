@@ -2,70 +2,67 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_shared/flutter_shared.dart';
 
-import '../../core/storage/preferences.dart';
-import '../../shared/widgets/common_widgets.dart';
+import '../../shared/repositories/owner_repository.dart';
 
-/// Which kinds of alerts the owner wants. Stored on this device only: push notifications are
-/// built in Step 7, and there is no server-side preference yet.
-class NotificationPrefsController extends Notifier<Map<String, bool>> {
-  @override
-  Map<String, bool> build() {
-    final p = ref.read(sharedPreferencesProvider);
-    return {
-      for (final k in const [OwnerPrefKeys.notifyBookings, OwnerPrefKeys.notifyPayments, OwnerPrefKeys.notifyReviews])
-        k: p.getBool(k) ?? true,
-    };
-  }
+final notificationChannelsProvider = FutureProvider.autoDispose<NotificationChannels>(
+  (ref) => ref.watch(ownerRepositoryProvider).notificationChannels(),
+);
 
-  Future<void> set(String key, bool value) async {
-    state = {...state, key: value};
-    await ref.read(sharedPreferencesProvider).setBool(key, value);
-  }
-}
-
-final notificationPrefsProvider = NotifierProvider<NotificationPrefsController, Map<String, bool>>(NotificationPrefsController.new);
-
-class NotificationPrefsScreen extends ConsumerWidget {
+/// How the owner wants to be told about bookings, payments and reviews. Both switches are stored
+/// on the server (the same account is used on every device) and decide whether a push or an
+/// e-mail is sent. In-app notifications are always kept.
+class NotificationPrefsScreen extends ConsumerStatefulWidget {
   const NotificationPrefsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final prefs = ref.watch(notificationPrefsProvider);
-    final c = ref.read(notificationPrefsProvider.notifier);
+  ConsumerState<NotificationPrefsScreen> createState() => _NotificationPrefsScreenState();
+}
+
+class _NotificationPrefsScreenState extends ConsumerState<NotificationPrefsScreen> {
+  bool _saving = false;
+
+  Future<void> _save({bool? push, bool? email}) async {
+    setState(() => _saving = true);
+    try {
+      await ref.read(ownerRepositoryProvider).setNotificationChannels(push: push, email: email);
+      ref.invalidate(notificationChannelsProvider);
+    } catch (e) {
+      if (mounted) {
+        final message = e is ApiException ? e.message : 'Could not save your choice. Please try again.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final channels = ref.watch(notificationChannelsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Notification preferences')),
       body: ResponsivePage(
         maxWidth: 640,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          children: [
-            SwitchListTile(
-              title: const Text('Bookings'),
-              subtitle: const Text('New and cancelled bookings'),
-              value: prefs[OwnerPrefKeys.notifyBookings] ?? true,
-              onChanged: (v) => c.set(OwnerPrefKeys.notifyBookings, v),
-            ),
-            SwitchListTile(
-              title: const Text('Payments & payouts'),
-              subtitle: const Text('Payments received and payout updates'),
-              value: prefs[OwnerPrefKeys.notifyPayments] ?? true,
-              onChanged: (v) => c.set(OwnerPrefKeys.notifyPayments, v),
-            ),
-            SwitchListTile(
-              title: const Text('Reviews'),
-              subtitle: const Text('New reviews on your venues'),
-              value: prefs[OwnerPrefKeys.notifyReviews] ?? true,
-              onChanged: (v) => c.set(OwnerPrefKeys.notifyReviews, v),
-            ),
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: UnavailableCard(
-                title: 'Saved on this device',
-                message: 'Push notifications are not switched on yet. These choices will apply when they are.',
-                icon: Icons.phone_android_rounded,
+        child: channels.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => ErrorView.fromError(e, onRetry: () => ref.invalidate(notificationChannelsProvider)),
+          data: (c) => ListView(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            children: [
+              SwitchListTile(
+                title: const Text('Push notifications'),
+                subtitle: const Text('New and cancelled bookings, payments received, reviews'),
+                value: c.push,
+                onChanged: _saving ? null : (v) => _save(push: v),
               ),
-            ),
-          ],
+              SwitchListTile(
+                title: const Text('E-mail'),
+                subtitle: const Text('Booking and payment e-mails'),
+                value: c.email,
+                onChanged: _saving ? null : (v) => _save(email: v),
+              ),
+            ],
+          ),
         ),
       ),
     );

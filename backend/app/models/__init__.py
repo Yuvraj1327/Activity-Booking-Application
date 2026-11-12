@@ -9,6 +9,7 @@ from app.models.payment import (
     PaymentEvent,
     UserDeviceToken,
 )
+from app.models.review import Review, ReviewResponse
 from app.models.system import AuditLog, Notification
 from app.models.venue import (
     Favorite,
@@ -22,6 +23,8 @@ from app.models.venue import (
 )
 
 __all__ = [
+    "Review",
+    "ReviewResponse",
     "AvailabilityBlock",
     "Booking",
     "BookingSlot",

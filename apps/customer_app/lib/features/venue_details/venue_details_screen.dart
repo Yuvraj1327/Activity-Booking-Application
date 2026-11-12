@@ -10,6 +10,8 @@ import '../../shared/models/venue.dart';
 import '../../shared/widgets/category_icons.dart';
 import '../../shared/widgets/common_widgets.dart';
 import '../../shared/widgets/z_network_image.dart';
+import '../reviews/review_widgets.dart';
+import 'directions_launcher.dart';
 import 'venue_detail_provider.dart';
 
 class VenueDetailsScreen extends ConsumerWidget {
@@ -53,12 +55,12 @@ class _Frame extends StatelessWidget {
   }
 }
 
-class _Content extends StatelessWidget {
+class _Content extends ConsumerWidget {
   const _Content({required this.venue});
   final VenueDetail venue;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final where = joinLocation(venue.addressLine, venue.cityName);
     final fullAddress = [if (where.isNotEmpty) where, if (venue.postalCode != null) venue.postalCode!].join(' ');
@@ -130,6 +132,23 @@ class _Content extends StatelessWidget {
                         title: fullAddress.isEmpty ? 'Address not provided' : fullAddress,
                         subtitle: venue.distanceKm == null ? null : '${formatDistance(venue.distanceKm!)} from you',
                       ),
+                      if (venue.latitude != null && venue.longitude != null)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () async {
+                              final messenger = ScaffoldMessenger.of(context);
+                              final ok = await ref
+                                  .read(directionsLauncherProvider)
+                                  .open(latitude: venue.latitude!, longitude: venue.longitude!);
+                              if (!ok) {
+                                messenger.showSnackBar(const SnackBar(content: Text('Could not open maps on this device.')));
+                              }
+                            },
+                            icon: const Icon(Icons.directions_outlined),
+                            label: const Text('Directions'),
+                          ),
+                        ),
                       if (venue.contactPhone != null) ...[
                         const SizedBox(height: 12),
                         _InfoRow(icon: Icons.call_outlined, title: venue.contactPhone!),
@@ -176,30 +195,7 @@ class _Content extends StatelessWidget {
                         ),
                       ],
                       const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: ZuruvColors.primaryTint, borderRadius: BorderRadius.circular(Radii.card)),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(Icons.event_available_rounded, color: theme.colorScheme.primary),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Booking availability', style: theme.textTheme.titleMedium),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Live slots and online booking are coming soon. Save this venue to find it quickly later.',
-                                    style: theme.textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      VenueReviewsSection(venueId: venue.id),
                     ],
                   ),
                 ),

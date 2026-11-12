@@ -130,8 +130,15 @@ All tables use UUID primary keys (`gen_random_uuid()`), `timestamptz` timestamps
 
 ## RLS summary
 
-All 25 tables have RLS enabled (Step 7: `payments` readable by its customer, the venue's owner and admins; `notification_preferences` by its user; `payment_events`, `user_device_tokens` and `email_deliveries` by nobody but the backend) (Step 6 added 4 tables and 7 more `SELECT` policies; before that 23 `SELECT` policies on `public`; the two schedule tables are readable only for venues the caller can already see; `favorites_select_own` = own rows, customers only). `anon` and `authenticated` hold `SELECT` only (writes are revoked) and the only policies are `SELECT` policies; **there are no insert/update/delete policies**, so even a mistaken GRANT cannot allow a client write (tested both ways). See ROLE_PERMISSION_MATRIX.md for who sees what.
+All 27 tables have RLS enabled (Step 7: `payments` readable by its customer, the venue's owner and admins; `notification_preferences` by its user; `payment_events`, `user_device_tokens` and `email_deliveries` by nobody but the backend) (Step 6 added 4 tables and 7 more `SELECT` policies; before that 23 `SELECT` policies on `public`; the two schedule tables are readable only for venues the caller can already see; `favorites_select_own` = own rows, customers only). `anon` and `authenticated` hold `SELECT` only (writes are revoked) and the only policies are `SELECT` policies; **there are no insert/update/delete policies**, so even a mistaken GRANT cannot allow a client write (tested both ways). See ROLE_PERMISSION_MATRIX.md for who sees what.
 
 ## Not in this schema yet
 
 Refunds, ledger, payouts (no approved policy: Q9, Q10), reviews. Added by the steps that need them. Jobs are an in-process loop plus the `notifications`/`email_deliveries` outbox, not a table.
+
+## Step 10 additions (migration 0009; 0008 added indexes only)
+
+- `reviews`: one per booking (`UNIQUE booking_id`), `rating` 1-5, optional `comment` (1-1000 chars). Trigger `trg_reviews_rating` recomputes `venues.rating_avg/rating_count` after locking the venue row. Update and delete are refused by trigger.
+- `review_responses`: one per review (`UNIQUE review_id`), `body` 1-1000 chars; immutable.
+- RLS enabled and all client grants revoked: reads happen only through the API.
+- Migration 0008: indexes `bookings(created_at DESC)`, `profiles(role, created_at DESC)`, `venues(created_at DESC)`.

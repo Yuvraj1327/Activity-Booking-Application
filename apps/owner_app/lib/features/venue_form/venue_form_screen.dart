@@ -12,6 +12,7 @@ import '../../shared/repositories/owner_repository.dart';
 import '../../shared/widgets/common_widgets.dart';
 import '../../shared/widgets/z_network_image.dart';
 import '../venues/venue_manage_screen.dart';
+import 'address_search_dialog.dart';
 import '../venues/venues_screen.dart';
 
 /// Hands a picked photo to the form. Replaced in tests so no real picker is needed.
@@ -314,6 +315,17 @@ class _VenueFormScreenState extends ConsumerState<VenueFormScreen> {
   }
 
   // ------------------------------------------------------------------ build
+  Future<void> _searchAddress() async {
+    final d = await showAddressSearch(context);
+    if (d == null || !mounted) return;
+    setState(() {
+      if (d.formattedAddress != null) _address.text = d.formattedAddress!;
+      if (d.postalCode != null) _postal.text = d.postalCode!;
+      if (d.latitude != null) _lat.text = d.latitude!.toString();
+      if (d.longitude != null) _lng.text = d.longitude!.toString();
+    });
+  }
+
   String? _latValidator(String? v) {
     final text = (v ?? '').trim();
     if (text.isEmpty) return _lng.text.trim().isEmpty ? null : 'Enter latitude too';
@@ -398,6 +410,14 @@ class _VenueFormScreenState extends ConsumerState<VenueFormScreen> {
                   ),
                 ),
                 const SizedBox(height: Gap.lg),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _searchAddress,
+                    icon: const Icon(Icons.search),
+                    label: const Text('Search address'),
+                  ),
+                ),
                 TextFormField(
                   controller: _address,
                   textCapitalization: TextCapitalization.words,

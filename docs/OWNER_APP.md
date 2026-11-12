@@ -8,8 +8,8 @@ Flutter app for venue owners. Same stack and shared package as the Customer app 
 
 ```bash
 ./scripts/bootstrap_flutter.sh
-cd apps/owner_app && cp env/dev.example.json env/dev.json   # fill in public values
-flutter run --dart-define-from-file=env/dev.json
+cd apps/owner_app && cp .env.example .env   # fill in public values
+flutter run
 flutter analyze && flutter test
 ```
 

@@ -15,7 +15,9 @@ from app.api.v1.endpoints import (
     owner_venues,
     owners,
     payments,
+    places,
     profiles,
+    reviews,
 )
 
 api_router = APIRouter()
@@ -31,4 +33,6 @@ api_router.include_router(admin.router)
 api_router.include_router(catalog.router)
 api_router.include_router(bookings.router)
 api_router.include_router(payments.router)
+api_router.include_router(reviews.router)
+api_router.include_router(places.router)
 api_router.include_router(notifications.router)

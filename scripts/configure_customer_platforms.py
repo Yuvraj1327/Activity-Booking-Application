@@ -43,6 +43,13 @@ def patch_android() -> str:
         if perm not in text:
             text = re.sub(r"(<manifest[^>]*>\n?)", rf'\1    <uses-permission android:name="{perm}"/>\n', text, count=1)
             changed = True
+    if "<queries>" not in text:
+        queries = (
+            "    <queries>\n        <intent>\n            <action android:name=\"android.intent.action.VIEW\"/>\n"
+            "            <data android:scheme=\"https\"/>\n        </intent>\n    </queries>\n"
+        )
+        text = text.replace("<application", queries + "    <application", 1)
+        changed = True
     if SCHEME not in text:
         text = text.replace("</activity>", ANDROID_INTENT_FILTER + "        </activity>", 1)
         changed = True

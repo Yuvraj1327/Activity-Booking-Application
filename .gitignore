@@ -10,8 +10,6 @@
 **/.env
 **/.env.*
 !**/.env.example
-**/env/*.json
-!**/env/*.example.json
 *.pem
 *.key
 *.p12

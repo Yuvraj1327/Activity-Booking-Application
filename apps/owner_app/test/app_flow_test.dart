@@ -169,8 +169,17 @@ void main() {
     await tester.tap(find.text('Bank & payout settings'));
     await tester.pumpAndSettle();
     expect(find.text('Not available yet'), findsOneWidget);
-    final save = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save bank details'));
-    expect(save.onPressed, isNull); // nothing is collected or stored
+    expect(find.widgetWithText(FilledButton, 'Save bank details'), findsNothing); // nothing is collected
+    expect(find.byType(TextField), findsNothing);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Notification preferences'));
+    await tester.pumpAndSettle();
+    expect(find.text('Push notifications'), findsOneWidget);
+    await tester.tap(find.widgetWithText(SwitchListTile, 'Push notifications'));
+    await tester.pumpAndSettle();
+    expect(repo.channelUpdates.single, {'push': false, 'email': null}); // stored through the API
     await tester.pageBack();
     await tester.pumpAndSettle();
 
@@ -194,13 +203,48 @@ void main() {
     expect(find.text('Revenue'), findsOneWidget);
   });
 
-  testWidgets('reviews is honest that there are no reviews to show yet', (tester) async {
+  testWidgets('reviews: empty state when there are none', (tester) async {
     await TestEnv().pump(tester);
     await tester.tap(inNavBar('Profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Reviews'));
     await tester.pumpAndSettle();
     expect(find.text('No reviews yet'), findsOneWidget);
+  });
+
+  testWidgets('reviews: summary, star filter and a single reply', (tester) async {
+    final repo = FakeOwnerRepository()
+      ..reviewList = [
+        OwnerReview(
+          id: 'r1', rating: 5, comment: 'Superb court', reviewerName: 'Priya S.', venueName: 'Ace Arena',
+          bookingCode: 'ZUR-1', createdAt: DateTime(2030, 1, 1), replyBody: null, replyAt: null,
+        ),
+        OwnerReview(
+          id: 'r2', rating: 3, comment: null, reviewerName: 'Rahul V.', venueName: 'Ace Arena',
+          bookingCode: 'ZUR-2', createdAt: DateTime(2030, 1, 1), replyBody: null, replyAt: null,
+        ),
+      ];
+    await TestEnv(repo: repo).pump(tester);
+    await tester.tap(inNavBar('Profile'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reviews'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('4.0 average from 2 reviews'), findsOneWidget);
+    expect(find.text('Priya S.'), findsOneWidget);
+
+    await tester.tap(find.textContaining('3\u2605'));
+    await tester.pumpAndSettle();
+    expect(find.text('Priya S.'), findsNothing);
+    expect(find.text('Rahul V.'), findsOneWidget);
+
+    await tester.tap(find.text('Reply'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Thanks for playing');
+    await tester.tap(find.text('Post reply'));
+    await tester.pumpAndSettle();
+    expect(repo.replies, ['r2:Thanks for playing']);
+    expect(find.text('Your reply'), findsOneWidget);
+    expect(find.text('Reply'), findsNothing); // one reply per review
   });
 }
 

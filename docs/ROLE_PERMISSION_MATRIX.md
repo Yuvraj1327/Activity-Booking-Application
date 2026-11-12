@@ -24,6 +24,8 @@ Rules enforced and tested:
 - A role cannot change after creation (database trigger).
 - Admin endpoints additionally require an MFA-verified session (`aal2`) when `ADMIN_REQUIRE_MFA` is on (automatic in staging/production).
 
+Admin web permissions in full: `ADMIN_PERMISSION_MATRIX.md`.
+
 ## Capabilities from the approved architecture (§8.4), and where they land
 
 | Capability | Customer | Owner | Admin | Built in |
@@ -33,7 +35,7 @@ Rules enforced and tested:
 | Create / manage venues | ✖ | own only | ✖ by default | Step 5 (ownership already enforced by FK + RLS) |
 | Bookings (**Step 6**) | own, create, cancel under the rules | own venues, read, customer name only | read all | Created and cancelled only through the API; no role can set a status directly |
 | Payments | customer | owner (own venues) | read | Step 7 |
-| Manage accounts | own | own | per Q18 | Step 8 |
+| Manage accounts | own | own | suspend/reactivate only, audited (rest per Q18) | Step 8 |
 
 ## Database (RLS) read access, as the `authenticated` / `anon` roles
 

@@ -11,6 +11,7 @@ import '../../shared/models/booking.dart';
 import '../../shared/repositories/booking_repository.dart';
 import '../../shared/widgets/common_widgets.dart';
 import '../booking/booking_providers.dart';
+import '../reviews/review_widgets.dart';
 import 'bookings_screen.dart';
 
 class BookingDetailsScreen extends ConsumerStatefulWidget {
@@ -160,6 +161,7 @@ class _Body extends StatelessWidget {
               ]),
             ),
         ],
+        if (b.status == 'completed') BookingReviewCard(bookingId: b.id),
         if (b.canCancel) ...[
           const SizedBox(height: Gap.xxl),
           OutlinedButton(

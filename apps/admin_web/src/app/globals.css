@@ -14,6 +14,9 @@
   --color-primary-tint: var(--primary-tint);
   --color-destructive: var(--destructive);
   --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
   --radius-lg: 0.75rem;
   --radius-md: 0.5rem;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -33,6 +36,15 @@
   --primary-tint: #f5f1ff;
   --destructive: #fa1945;
   --success: #0caf61;
+  --warning: #f5a524;
+  --warning-foreground: #8a5a00;
+  --info: #2f7de1;
+  --chart-1: #442edb;
+  --chart-2: #8b6cf0;
+  --chart-3: #c4b5fd;
+  --chart-4: #0caf61;
+  --chart-5: #f5a524;
+  --chart-6: #fa1945;
 }
 
 body {

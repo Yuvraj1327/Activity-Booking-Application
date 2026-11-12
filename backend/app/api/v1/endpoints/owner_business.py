@@ -8,11 +8,13 @@ from app.api.deps import DbSession, OwnerUser
 from app.core.errors import ValidationFailedError
 from app.schemas.booking import OwnerBookingOut, OwnerBookingPage
 from app.schemas.catalog import Limit
-from app.schemas.owner import AnalyticsOut, DashboardOut, NotificationPage, PendingList
+from app.schemas.owner import AnalyticsOut, DashboardOut, NotificationPage
 from app.schemas.payment import OwnerEarningsOut, OwnerPaymentPage
+from app.schemas.review import OwnerReviewOut, OwnerReviewPage, ReplyCreate
 from app.services.bookings import BookingService
-from app.services.owner_business import STEP_REVIEWS, OwnerBusinessService, unavailable
+from app.services.owner_business import OwnerBusinessService
 from app.services.payments import PaymentService
+from app.services.reviews import ReviewService
 
 router = APIRouter(prefix="/owners", tags=["owner-business"])
 
@@ -89,10 +91,31 @@ async def owner_payments(
     return await _payments(request, session).owner_payments(user.id, limit, offset)
 
 
-@router.get("/reviews", response_model=PendingList, summary="Reviews (no reviews feature yet)")
-async def reviews(user: OwnerUser) -> PendingList:
-    u = unavailable(STEP_REVIEWS, "Customer reviews")
-    return PendingList(depends_on=u.depends_on, message=u.message)
+@router.get("/reviews", response_model=OwnerReviewPage, summary="Reviews of my venues")
+async def reviews(
+    request: Request,
+    user: OwnerUser,
+    session: DbSession,
+    rating: Annotated[int | None, Query(ge=1, le=5)] = None,
+    venue_id: UUID | None = None,
+    limit: Limit = 20,
+    offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
+) -> OwnerReviewPage:
+    return await ReviewService(session, request.app.state.settings).owner_reviews(
+        user.id, rating, venue_id, limit, offset
+    )
+
+
+@router.post(
+    "/reviews/{review_id}/reply",
+    response_model=OwnerReviewOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Reply to a review of my venue (once)",
+)
+async def reply_to_review(
+    review_id: UUID, body: ReplyCreate, request: Request, user: OwnerUser, session: DbSession
+) -> OwnerReviewOut:
+    return await ReviewService(session, request.app.state.settings).reply(user.id, review_id, body.body)
 
 
 def _payments(request: Request, session: DbSession) -> PaymentService:

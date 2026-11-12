@@ -324,9 +324,33 @@ class FakeOwnerRepository implements OwnerRepository {
 
   @override
   Future<OwnerPaymentPage> payments({int offset = 0}) async => OwnerPaymentPage(items: paymentList, hasMore: false);
+  List<OwnerReview> reviewList = [];
+  final List<String> replies = [];
+
   @override
-  Future<PendingFeature> reviews() async =>
-      const PendingFeature(dependsOn: 'Reviews feature (no reviews table yet)', message: 'Customer reviews will appear once it is built.');
+  Future<OwnerReviewPage> reviews({int? rating, int offset = 0}) async {
+    final shown = reviewList.where((r) => rating == null || r.rating == rating).toList();
+    final dist = {for (var i = 1; i <= 5; i++) i: reviewList.where((r) => r.rating == i).length};
+    final avg = reviewList.isEmpty ? null : reviewList.fold<int>(0, (a, r) => a + r.rating) / reviewList.length;
+    return OwnerReviewPage(
+      items: shown,
+      summary: RatingSummary(average: avg, count: reviewList.length, distribution: dist),
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<OwnerReview> replyToReview(String reviewId, String body) async {
+    replies.add('$reviewId:$body');
+    final i = reviewList.indexWhere((r) => r.id == reviewId);
+    final r = reviewList[i];
+    final updated = OwnerReview(
+      id: r.id, rating: r.rating, comment: r.comment, reviewerName: r.reviewerName, venueName: r.venueName,
+      bookingCode: r.bookingCode, createdAt: r.createdAt, replyBody: body, replyAt: DateTime(2030, 1, 2),
+    );
+    reviewList[i] = updated;
+    return updated;
+  }
 
   final List<OwnerNotification> notes = [
     OwnerNotification(id: 'n1', type: 'booking.created', title: 'New booking', isRead: false, createdAt: DateTime(2030, 1, 1)),
@@ -352,6 +376,34 @@ class FakeOwnerRepository implements OwnerRepository {
     markedRead.add(id);
     final i = notes.indexWhere((n) => n.id == id);
     notes[i] = notes[i].asRead();
+  }
+
+  NotificationChannels channels = const NotificationChannels(push: true, email: true);
+  final List<Map<String, bool?>> channelUpdates = [];
+
+  PlacesFail? placesFail;
+  @override
+  Future<List<PlaceSuggestion>> searchPlaces(String q, {String? sessionToken}) async {
+    if (placesFail != null) throw placesFail!.error;
+    return const [PlaceSuggestion(placeId: 'p1', description: 'Ace Arena Road, Pune')];
+  }
+
+  @override
+  Future<PlaceDetails> placeDetails(String placeId) async => const PlaceDetails(
+        formattedAddress: 'Ace Arena Road, Pune 411001',
+        latitude: 18.52,
+        longitude: 73.85,
+        postalCode: '411001',
+      );
+
+  @override
+  Future<NotificationChannels> notificationChannels() async => channels;
+
+  @override
+  Future<NotificationChannels> setNotificationChannels({bool? push, bool? email}) async {
+    channelUpdates.add({'push': push, 'email': email});
+    channels = NotificationChannels(push: push ?? channels.push, email: email ?? channels.email);
+    return channels;
   }
 
   @override
@@ -451,3 +503,8 @@ OwnerBooking bookingOf(
       customerName: customer,
       history: [BookingEvent(toStatus: status, actorRole: 'customer', createdAt: DateTime(2030, 1, 1))],
     );
+
+class PlacesFail {
+  const PlacesFail(this.error);
+  final Object error;
+}

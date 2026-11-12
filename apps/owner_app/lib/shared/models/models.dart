@@ -674,3 +674,98 @@ class TimeBlock {
   final DateTime endsAt;
   final String? reason;
 }
+
+/// One customer review of an owner's venue, with the owner's reply if there is one.
+class OwnerReview {
+  const OwnerReview({
+    required this.id,
+    required this.rating,
+    required this.comment,
+    required this.reviewerName,
+    required this.venueName,
+    required this.bookingCode,
+    required this.createdAt,
+    required this.replyBody,
+    required this.replyAt,
+  });
+
+  factory OwnerReview.fromJson(Map<String, dynamic> j) {
+    final reply = j['reply'] as Map<String, dynamic>?;
+    return OwnerReview(
+      id: j['id'] as String,
+      rating: j['rating'] as int,
+      comment: j['comment'] as String?,
+      reviewerName: j['reviewer_name'] as String,
+      venueName: j['venue_name'] as String,
+      bookingCode: j['booking_code'] as String,
+      createdAt: DateTime.parse(j['created_at'] as String),
+      replyBody: reply?['body'] as String?,
+      replyAt: reply == null ? null : DateTime.parse(reply['created_at'] as String),
+    );
+  }
+
+  final String id;
+  final int rating;
+  final String? comment;
+  final String reviewerName;
+  final String venueName;
+  final String bookingCode;
+  final DateTime createdAt;
+  final String? replyBody;
+  final DateTime? replyAt;
+
+  bool get hasReply => replyBody != null;
+}
+
+/// Average, count and per-star counts across the owner's venues (computed on the server).
+class RatingSummary {
+  const RatingSummary({required this.average, required this.count, required this.distribution});
+
+  factory RatingSummary.fromJson(Map<String, dynamic> j) => RatingSummary(
+        average: (j['average'] as num?)?.toDouble(),
+        count: j['count'] as int,
+        distribution: {
+          for (final e in (j['distribution'] as Map<String, dynamic>).entries) int.parse(e.key): e.value as int,
+        },
+      );
+
+  final double? average;
+  final int count;
+  final Map<int, int> distribution;
+}
+
+class OwnerReviewPage {
+  const OwnerReviewPage({required this.items, required this.summary, required this.hasMore});
+
+  factory OwnerReviewPage.fromJson(Map<String, dynamic> j) => OwnerReviewPage(
+        items: [for (final r in j['items'] as List<dynamic>) OwnerReview.fromJson(r as Map<String, dynamic>)],
+        summary: RatingSummary.fromJson(j['summary'] as Map<String, dynamic>),
+        hasMore: j['has_more'] as bool,
+      );
+
+  final List<OwnerReview> items;
+  final RatingSummary summary;
+  final bool hasMore;
+}
+
+class PlaceSuggestion {
+  const PlaceSuggestion({required this.placeId, required this.description});
+  factory PlaceSuggestion.fromJson(Map<String, dynamic> j) =>
+      PlaceSuggestion(placeId: j['place_id'] as String, description: j['description'] as String);
+  final String placeId;
+  final String description;
+}
+
+class PlaceDetails {
+  const PlaceDetails({this.formattedAddress, this.latitude, this.longitude, this.postalCode});
+  factory PlaceDetails.fromJson(Map<String, dynamic> j) => PlaceDetails(
+        formattedAddress: j['formatted_address'] as String?,
+        latitude: (j['latitude'] as num?)?.toDouble(),
+        longitude: (j['longitude'] as num?)?.toDouble(),
+        postalCode: j['postal_code'] as String?,
+      );
+  final String? formattedAddress;
+  final double? latitude;
+  final double? longitude;
+  final String? postalCode;
+}

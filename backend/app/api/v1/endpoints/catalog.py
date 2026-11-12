@@ -58,9 +58,10 @@ async def list_venues(
     sort: VenueSort = "popular",
     limit: Limit = 20,
     offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
+    available_today: bool = False,
 ) -> VenuePage:
     filters = VenueFilters(
-        q, category, city_id, min_price, max_price, lat, lng, radius_km, sort, limit, offset
+        q, category, city_id, min_price, max_price, lat, lng, radius_km, sort, limit, offset, available_today
     )
     customer_id = user.id if user.role == "customer" else None
     return await _service(request, session).list_venues(filters, customer_id)

@@ -32,7 +32,7 @@ const _pages = [
   _Page(Icons.tune_rounded, 'Find the perfect spot',
       'Search by sport, filter by price and distance, and save your favourites to come back to.'),
   _Page(Icons.event_available_rounded, 'Book in a few taps',
-      'See what is available and lock in your slot. Booking is coming soon, so you will be ready to play.'),
+      'See the live slots, pick a time and pay securely to confirm your booking.'),
 ];
 
 class OnboardingScreen extends ConsumerStatefulWidget {

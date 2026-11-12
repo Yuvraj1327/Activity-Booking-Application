@@ -20,7 +20,7 @@ Base URL: `API_BASE_URL` (default `http://localhost:8008/api/v1`). One Dio clien
 | Notifications | `GET /owners/notifications`, `POST …/{id}/read`, `POST …/read-all` | Real |
 | Bookings, booking details (Step 6) | `GET /owners/bookings?bucket`, `GET /owners/bookings/{id}` | **Real (Step 6)**: read-only list with customer name, status and history; unpaid holds hidden |
 | Earnings, payouts | `GET /owners/earnings` | "Not available yet" until Step 7 |
-| Reviews | `GET /owners/reviews` | "Not available yet" (no reviews feature) |
+| Reviews | `GET /owners/reviews`, `POST /owners/reviews/{id}/reply` | Real since Step 10 |
 | Bank details | none | Not collected (D-57) |
 
 ## Endpoints in the Step 1 catalogue that are not built

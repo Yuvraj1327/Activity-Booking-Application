@@ -68,6 +68,8 @@ void main() {
         'offset': 20,
       });
       expect(const VenueQuery().toParams(offset: 0), {'sort': 'popular', 'limit': 20, 'offset': 0});
+      expect(const VenueQuery(availableToday: true).toParams(offset: 0)['available_today'], true);
+      expect(const VenueQuery(availableToday: true).hasFilters, isTrue);
     });
 
     test('is value-equal so it can key a provider family', () {

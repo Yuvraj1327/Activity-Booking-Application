@@ -19,7 +19,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,6 +55,7 @@ from app.schemas.payment import (
 )
 from app.services.bookings import BookingService
 from app.services.notifications import EmailSpec, NotificationService
+from app.utils.search import like_pattern
 
 logger = logging.getLogger(__name__)
 
@@ -845,7 +846,16 @@ class PaymentService:
         )
 
     async def admin_list(
-        self, status: str | None, review_required: bool | None, limit: int, offset: int
+        self,
+        status: str | None,
+        review_required: bool | None,
+        limit: int,
+        offset: int,
+        *,
+        q: str | None = None,
+        venue_id: UUID | None = None,
+        created_from: datetime | None = None,
+        created_before: datetime | None = None,
     ) -> AdminPaymentPage:
         stmt = (
             select(Payment, Booking, Venue.name)
@@ -856,6 +866,22 @@ class PaymentService:
             stmt = stmt.where(Payment.status == status)
         if review_required is not None:
             stmt = stmt.where(Payment.review_required == review_required)
+        if venue_id is not None:
+            stmt = stmt.where(Payment.venue_id == venue_id)
+        if created_from is not None:
+            stmt = stmt.where(Payment.created_at >= created_from)
+        if created_before is not None:
+            stmt = stmt.where(Payment.created_at < created_before)
+        if q and q.strip():
+            pat = like_pattern(q)
+            stmt = stmt.where(
+                or_(
+                    Booking.booking_code.ilike(pat, escape="\\"),
+                    Payment.provider_order_id.ilike(pat, escape="\\"),
+                    Payment.provider_payment_id.ilike(pat, escape="\\"),
+                    cast(Payment.id, String).ilike(pat, escape="\\"),
+                )
+            )
         rows = (
             await self.s.execute(
                 stmt.order_by(Payment.created_at.desc(), Payment.id).limit(limit + 1).offset(offset)

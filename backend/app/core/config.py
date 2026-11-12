@@ -118,6 +118,11 @@ class Settings(BaseSettings):
     background_sweep_seconds: int = Field(default=60, ge=0, le=3600)
     payment_reconcile_after_minutes: int = Field(default=3, ge=1, le=1440)
 
+    # Step 8: calendar used to bucket admin reports by day/week/month and to read date filters.
+    # A presentation choice only (not a business rule); any IANA zone works.
+    admin_report_timezone: str = Field(default="Asia/Kolkata", min_length=1, max_length=64)
+    admin_export_max_rows: int = Field(default=20000, ge=1, le=200000)
+
     # ------------------------------------------------------------------ validators
     @field_validator(*_OPTIONAL_TEXT_FIELDS, mode="before")
     @classmethod

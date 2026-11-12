@@ -3,6 +3,7 @@
 import logging
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +18,7 @@ from app.core.security import TokenClaims
 from app.models import AuditLog, CustomerProfile, OwnerProfile, Profile
 from app.repositories.profiles import ProfileRepository
 from app.schemas.profile import CustomerUpdate, OwnerUpdate, ProfileCreate, ProfileUpdate
+from app.services.notifications import NotificationService
 from app.utils.phone import normalize_claim_phone
 
 logger = logging.getLogger(__name__)
@@ -81,6 +83,7 @@ class ProfileService:
                     )
                 )
             await self.repo.add_audit(self._audit(profile, "profile.registered", role=payload.role))
+            await self._notify_admins_of_registration(profile)
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
@@ -95,6 +98,23 @@ class ProfileService:
             raise
         await self.session.refresh(profile)
         return profile, True
+
+    async def _notify_admins_of_registration(self, profile: Profile) -> None:
+        """Tell active admins about a new customer or owner (de-duplicated per account)."""
+        admins = (
+            await self.session.scalars(
+                select(Profile.id).where(Profile.role == "admin", Profile.status == "active")
+            )
+        ).all()
+        notes = NotificationService(self.session)
+        for admin_id in admins:
+            await notes.queue(
+                user_id=admin_id,
+                type_=f"admin.new_{profile.role}",
+                title=f"New {profile.role} registered",
+                body=profile.full_name[:200],
+                dedupe_key=f"register:{profile.id}",
+            )
 
     @staticmethod
     def _existing_or_conflict(existing: Profile, payload: ProfileCreate) -> Profile:
