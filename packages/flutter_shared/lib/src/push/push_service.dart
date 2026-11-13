@@ -126,7 +126,10 @@ class PushRegistrar {
       final t = await _messaging.token();
       if (t == null || t.isEmpty) return;
       await _send(t, app);
-      _refresh ??= _messaging.tokenRefreshes.listen((next) => _send(next, app));
+      // One app, two roles: a different account (e.g. customer after owner) may register next, so the
+      // refresh listener is replaced each time and always reports the CURRENT role.
+      await _refresh?.cancel();
+      _refresh = _messaging.tokenRefreshes.listen((next) => _send(next, app));
     } catch (_) {
       // Push is a convenience; a failure here must never break sign-in.
     }

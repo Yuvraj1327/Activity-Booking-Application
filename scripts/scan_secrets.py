@@ -25,7 +25,7 @@ PATTERNS = {
 }
 # Names that must never be read by client code.
 CLIENT_FORBIDDEN = re.compile(r"SUPABASE_SERVICE_ROLE|SERVICE_ROLE_KEY|RAZORPAY_KEY_SECRET|RAZORPAY_WEBHOOK_SECRET")
-CLIENT_DIRS = ("apps/admin_web/src", "apps/customer_app/lib", "apps/owner_app/lib", "packages/flutter_shared/lib")
+CLIENT_DIRS = ("apps/admin_web/src", "apps/mobile_app/lib", "packages/flutter_shared/lib")
 
 
 def files(base: Path):

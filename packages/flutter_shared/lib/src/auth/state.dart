@@ -14,7 +14,7 @@ class AuthInitializing extends AppAuthState {
 class Unauthenticated extends AppAuthState {
   const Unauthenticated({this.notice});
 
-  /// Shown on the login screen (e.g. "This is an owner account, use the Owner app").
+  /// Shown on the login screen (e.g. "Admin accounts sign in on the website").
   final String? notice;
 }
 

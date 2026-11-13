@@ -47,7 +47,7 @@ class _PushBootstrapState extends ConsumerState<PushBootstrap> {
     }
     if (_registeredFor == auth.profile.id) return;
     _registeredFor = auth.profile.id;
-    final app = ref.read(expectedRoleProvider) == AppRole.owner ? 'owner' : 'customer';
+    final app = auth.profile.role == AppRole.owner ? 'owner' : 'customer';
     await ref.read(pushRegistrarProvider).register(app);
     final launch = await ref.read(pushMessagingProvider).launchData();
     if (launch != null && mounted) widget.onOpen(launch);

@@ -3,8 +3,7 @@
 ```
 zuruv/
 ├── apps/
-│   ├── customer_app/        Flutter app "ZURUV"        (lib/main.dart, app.dart, core/, features/)
-│   ├── owner_app/           Flutter app "ZURUV Owner"  (same layout)
+│   ├── mobile_app/          The one Flutter app "ZURUV" (lib/main.dart, app.dart, core/, customer/, owner/)
 │   └── admin_web/           Next.js (App Router, TypeScript, Tailwind v4, hand-written shadcn-style UI)
 │       └── src/{app,components/{ui,layout},lib}
 ├── packages/
@@ -26,7 +25,7 @@ zuruv/
 │   ├── requirements.txt, requirements-dev.txt, pyproject.toml, alembic.ini, Dockerfile, .env.example
 ├── supabase/                config.toml, migrations/ (reserved), local/supabase_stub.sql (LOCAL TEST ONLY)
 ├── docs/                    Step 1 documents, Step 2 documents, reference/ (UI boards)
-├── scripts/                 bootstrap_flutter.sh, dev_pg.sh (throwaway local Postgres)
+├── scripts/                 bootstrap_flutter.sh, configure_mobile_platforms.py, dev_pg.sh (throwaway local Postgres)
 ├── docker-compose.yml       optional local Postgres (+ API under profile "api")
 ├── Makefile, .gitignore, .env.example, README.md
 └── .github/workflows/       CI (backend, admin)

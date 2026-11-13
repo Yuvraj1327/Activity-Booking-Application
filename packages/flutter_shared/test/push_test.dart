@@ -22,10 +22,10 @@ class _Adapter implements HttpClientAdapter {
 }
 
 class _FakeMessaging implements PushMessaging {
-  _FakeMessaging({this.granted = true, this.current = 'token-aaaaaaaaaaaaaaaaaaaa', this.isAvailable = true});
+  _FakeMessaging({this.granted = true, this.isAvailable = true});
 
   bool granted;
-  String? current;
+  String? current = 'token-aaaaaaaaaaaaaaaaaaaa';
   bool isAvailable;
   final refresh = StreamController<String>.broadcast();
 
@@ -78,8 +78,7 @@ void main() {
     final registrar = PushRegistrar(dio, messaging);
     await registrar.register('owner');
     messaging.refresh.add('token-bbbbbbbbbbbbbbbbbbbb');
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
     expect(adapter.requests.length, 2);
     expect(body(adapter.requests.last)['token'], 'token-bbbbbbbbbbbbbbbbbbbb');
     expect(body(adapter.requests.last)['app'], 'owner');

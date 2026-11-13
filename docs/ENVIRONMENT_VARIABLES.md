@@ -31,7 +31,7 @@ None of these files may be committed. Only the `*.example` files are tracked.
 | Variable | Notes |
 |---|---|
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Public values only. Never the service-role key. |
-| `AUTH_REDIRECT_URL` | Deep link used by e-mail confirmation, password reset and OAuth, e.g. `io.zuruv.customer://login-callback`. Must be allow-listed in Supabase. |
+| `AUTH_REDIRECT_URL` | Deep link used by e-mail confirmation, password reset and OAuth, e.g. `io.zuruv.app://login-callback`. Must be allow-listed in Supabase. |
 | `GOOGLE_AUTH_ENABLED`, `APPLE_AUTH_ENABLED`, `PHONE_AUTH_ENABLED` | `true`/`false` (default false). Show the method only after its Supabase provider is configured. |
 | `API_BASE_URL` | e.g. `http://localhost:8008/api/v1`; Android emulator `http://10.0.2.2:8008/api/v1`; real device: your LAN IP. |
 

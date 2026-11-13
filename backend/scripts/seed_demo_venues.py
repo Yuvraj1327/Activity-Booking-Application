@@ -1,9 +1,9 @@
-"""Load clearly-labelled DEMO venues so the customer app has something to browse in development.
+"""Load clearly-labelled DEMO venues so the mobile app (customer role) has something to browse in development.
 
     python -m scripts.seed_demo_venues --owner-email owner@example.com
 
 * Refuses to run when ENVIRONMENT=production.
-* Needs an EXISTING owner account (sign one up through the Owner app / Supabase first) and the
+* Needs an EXISTING owner account (sign one up through the mobile app (choose "Venue owner") / Supabase first) and the
   reference data (`python -m scripts.seed_reference_data`).
 * Every demo venue name ends in "(Demo)". They have no images (the app shows its placeholder),
   no ratings and no reviews: nothing here fabricates social proof. Prices are invented sample

@@ -133,8 +133,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ],
         ],
         const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             const Text("Don't have an account?"),
             TextButton(onPressed: () => context.push('/register'), child: const Text('Create account')),
@@ -172,7 +173,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _submit(bool isOwner) async {
+  Future<void> _submit() async {
+    final isOwner = ref.read(signUpRoleProvider) == AppRole.owner;
     if (!_form.currentState!.validate()) return;
     setState(() {
       _loading = true;
@@ -183,6 +185,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             email: _email.text.trim(),
             password: _password.text,
             fullName: _name.text.trim(),
+            role: ref.read(signUpRoleProvider),
             businessName: isOwner ? _business.text.trim() : null,
           );
       if (outcome == SignUpOutcome.confirmationRequired && mounted) {
@@ -199,6 +202,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final cfg = ref.watch(authUiConfigProvider);
+    final isOwner = ref.watch(signUpRoleProvider) == AppRole.owner;
 
     if (_confirmationSentTo != null) {
       return AuthScaffold(
@@ -212,10 +216,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     return AuthScaffold(
       appName: cfg.appName,
-      title: cfg.isOwner ? 'Register your business' : 'Create your account',
+      title: isOwner ? 'Register your business' : 'Create your account',
       showBack: true,
       children: [
         if (_error != null) AuthBanner(message: _error!),
+        const AccountTypePicker(),
+        const SizedBox(height: 16),
         Form(
           key: _form,
           child: Column(
@@ -228,7 +234,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 validator: (v) => Validators.required(v, 'your name'),
                 decoration: const InputDecoration(labelText: 'Full name'),
               ),
-              if (cfg.isOwner) ...[
+              if (isOwner) ...[
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _business,
@@ -254,10 +260,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 controller: _confirm,
                 label: 'Confirm password',
                 validator: (v) => v == _password.text ? null : 'Passwords do not match',
-                onSubmitted: (_) => _submit(cfg.isOwner),
+                onSubmitted: (_) => _submit(),
               ),
               const SizedBox(height: 24),
-              LoadingButton(label: 'Create account', loading: _loading, onPressed: () => _submit(cfg.isOwner)),
+              LoadingButton(label: 'Create account', loading: _loading, onPressed: _submit),
             ],
           ),
         ),
@@ -526,10 +532,13 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _submit(bool isOwner) async {
+  Future<void> _submit() async {
+    final role = ref.read(signUpRoleProvider);
+    final isOwner = role == AppRole.owner;
     if (!_form.currentState!.validate()) return;
     setState(() => _loading = true);
     await ref.read(authControllerProvider.notifier).completeProfile(
+          role: role,
           fullName: _name.text.trim(),
           businessName: isOwner ? _business.text.trim() : null,
         );
@@ -540,13 +549,16 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   Widget build(BuildContext context) {
     final cfg = ref.watch(authUiConfigProvider);
     final s = ref.watch(authControllerProvider);
+    final isOwner = ref.watch(signUpRoleProvider) == AppRole.owner;
     final error = s is NeedsProfile ? s.error : null;
     return AuthScaffold(
       appName: cfg.appName,
       title: 'Complete your profile',
-      subtitle: 'Just a few details to finish setting up your ${cfg.role.label} account.',
+      subtitle: 'Choose your account type and add a few details to finish setting up.',
       children: [
         if (error != null) AuthBanner(message: error),
+        const AccountTypePicker(),
+        const SizedBox(height: 16),
         Form(
           key: _form,
           child: Column(
@@ -558,7 +570,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                 validator: (v) => Validators.required(v, 'your name'),
                 decoration: const InputDecoration(labelText: 'Full name'),
               ),
-              if (cfg.isOwner) ...[
+              if (isOwner) ...[
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _business,
@@ -568,7 +580,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                 ),
               ],
               const SizedBox(height: 24),
-              LoadingButton(label: 'Continue', loading: _loading, onPressed: () => _submit(cfg.isOwner)),
+              LoadingButton(label: 'Continue', loading: _loading, onPressed: _submit),
               TextButton(
                 onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
                 child: const Text('Sign out'),

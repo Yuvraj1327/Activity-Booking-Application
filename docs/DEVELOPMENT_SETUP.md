@@ -62,19 +62,19 @@ python -m scripts.seed_demo_venues --remove                # delete them again
 
 The demo script refuses to run when `ENVIRONMENT=production`, adds no images, ratings or reviews, and the apps never contain this data: they read everything from the API. Add real photos through the Owner app (Step 5) or Supabase Storage (`venue-images/<venue id>/<file>`, then a `venue_images` row).
 
-## 3. Flutter apps
+## 3. Flutter mobile app (one app: customer + owner)
 
 ```bash
 ./scripts/bootstrap_flutter.sh       # creates android/ios runners, runs pub get (once)
-cd apps/customer_app                 # or apps/owner_app
+cd apps/mobile_app
 cp .env.example .env # fill in public values
 flutter run
 flutter analyze && flutter test
 ```
 
-Owner app prerequisites: the backend running with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set (for venue photos), `seed_reference_data` run (cities, sports, amenities), and an account registered **as an owner**. `bootstrap_flutter.sh` also runs `scripts/configure_owner_platforms.py` (photo permission and the `io.zuruv.owner://login-callback` deep link; add that URL to the Supabase redirect allow-list). Run it with `cd apps/owner_app && flutter run`.
+Prerequisites: the backend running, `seed_reference_data` run (cities, sports, amenities) and your Supabase values in `.env`. For the **owner** role the backend also needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (venue photos). `bootstrap_flutter.sh` runs `scripts/configure_mobile_platforms.py`, which adds the location and photo permissions and the `io.zuruv.app://login-callback` deep link (add that URL to the Supabase redirect allow-list).
 
-Customer app prerequisites: the backend running, `seed_reference_data` run, and your Supabase values in `.env`. On a fresh clone `bootstrap_flutter.sh` also runs `scripts/configure_customer_platforms.py`, which adds the location and photo permissions and the `io.zuruv.customer://login-callback` deep link to the generated Android/iOS runners.
+Register as a **Player** to see the Customer Dashboard, or as a **Venue owner** to see the Owner Dashboard. Admin accounts cannot use the app: they sign in on the admin website. Full details: [MOBILE_APP.md](MOBILE_APP.md).
 
 ```bash
 cd ../../packages/flutter_shared && flutter test

@@ -128,7 +128,7 @@ zuruv/
 │   └── workflows/               # api.yml, customer-app.yml, owner-app.yml,
 │                                # admin-web.yml, secrets-scan.yml, db-migrations.yml
 ├── apps/
-│   ├── customer_app/            # Flutter (Customer)
+│   ├── mobile_app/              # Flutter: ONE app (Customer + Owner roles, role-based dashboards)
 │   │   ├── lib/
 │   │   │   ├── main_dev.dart · main_staging.dart · main_prod.dart
 │   │   │   ├── app/             # App widget, router, theme wiring, bootstrap
@@ -196,7 +196,7 @@ zuruv/
 - **Alembic location:** migrations live in `database/` as requested, but the SQLAlchemy models stay in `services/api` (they are the application's own code). `database/migrations/env.py` imports the models from the API package, which is installed in editable mode through the uv workspace. One schema definition, one migration history.
 - **Dart workspaces:** both Flutter apps and all four packages are members of one pub workspace so they resolve one dependency graph.
 - **Why four shared Flutter packages and no more:** design, networking/config, API contracts and authentication are the four things both apps genuinely share. Anything used by one app stays in that app.
-- **Path-filtered CI:** a change in `apps/owner_app` does not rebuild the customer app; a change in `packages/*` triggers both apps.
+- **Path-filtered CI:** a change in `apps/mobile_app` or `packages/*` runs the Flutter job; admin and backend have their own jobs.
 
 ---
 
@@ -601,7 +601,7 @@ Feature-first folders; inside each feature: `presentation` (widgets, Riverpod co
 Providers are generated with `riverpod_generator`. Server state (venues, bookings, availability) is exposed as async providers with explicit invalidation on mutation; ephemeral UI state stays in widgets or small notifiers. Booking flow is a state machine notifier with server-authoritative checkpoints (quote → hold → pay → confirmed).
 
 ### 11.3 GoRouter
-Typed routes; auth redirect guard driven by Supabase session state **and** the role returned by `GET /v1/me` (an Owner account signing in to the Customer app is signed out with a clear message, and vice versa). `StatefulShellRoute` for persistent bottom navigation (Customer: Home, Bookings, Favorites, Profile. Owner: Dashboard, Venues, Bookings, Payments, More). Deep links for booking confirmation and notification taps.
+Typed routes; auth redirect guard driven by Supabase session state **and** the role returned by `GET /v1/me` (one app, two roles: a customer account opens the Customer Dashboard, an owner account the Owner Dashboard, and neither can open the other's pages; an admin account is signed out with a message to use the website). `StatefulShellRoute` for persistent bottom navigation (Customer: Home, Bookings, Favorites, Profile. Owner: Dashboard, Venues, Bookings, Payments, More). Deep links for booking confirmation and notification taps.
 
 ### 11.4 Dio
 One configured client in `zuruv_core` with interceptors for: attaching the current access token and refreshing it, `request-id`, `Idempotency-Key` on designated calls, retry with backoff for safe GET requests only, error mapping to a typed `AppFailure` (network, auth, validation, conflict, server), and redacted logging in debug builds.

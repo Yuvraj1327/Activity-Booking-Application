@@ -27,7 +27,7 @@ class AppEnv {
   }
 
   /// Deep link Supabase redirects to after e-mail confirmation, password reset and OAuth,
-  /// e.g. `io.zuruv.customer://login-callback`. Must also be allow-listed in the Supabase dashboard.
+  /// e.g. `io.zuruv.app://login-callback`. Must also be allow-listed in the Supabase dashboard.
   static String get authRedirectUrl => _get('AUTH_REDIRECT_URL');
 
   /// Sign-in methods are shown only when switched on, because each one needs dashboard setup

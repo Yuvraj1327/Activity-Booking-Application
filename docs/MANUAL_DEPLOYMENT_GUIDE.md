@@ -32,7 +32,7 @@ Business decisions still open (refunds, GST, commission, payouts, venue approval
 1. Create the project (choose region close to your users and to Railway). Note: project URL, anon key, service-role key, database password.
 2. **Auth → URL configuration**
    - Site URL: `https://admin.<your-domain>`
-   - Redirect URLs (add all): `https://admin.<your-domain>/**`, `io.zuruv.customer://login-callback`, `io.zuruv.owner://login-callback`
+   - Redirect URLs (add all): `https://admin.<your-domain>/**`, `io.zuruv.app://login-callback`
 3. **Auth → Providers**: enable Email. Enable Google/Apple/Phone only if you have configured them, and then set `GOOGLE_AUTH_ENABLED` / `APPLE_AUTH_ENABLED` / `PHONE_AUTH_ENABLED` to `true` in the Flutter env files (phone login needs an SMS provider — open question N24).
 4. **Auth → SMTP**: point it at Resend SMTP so confirmation and reset e-mails come from your domain (see [EMAIL_CONFIGURATION.md](EMAIL_CONFIGURATION.md)).
 5. **Auth → MFA**: enable TOTP. Admins must enrol at first login (the backend demands an `aal2` session in production).
@@ -170,8 +170,7 @@ The repository has no `android/` or `ios/` folders (they are generated). **The F
 ```bash
 scripts/bootstrap_flutter.sh                  # flutter create + pub get + permissions + deep links
 cd packages/flutter_shared && flutter analyze && flutter test
-cd ../../apps/customer_app && flutter analyze && flutter test
-cd ../owner_app && flutter analyze && flutter test
+cd ../../apps/mobile_app && flutter analyze && flutter test
 ```
 
 Create the release env files (public values only, git-ignored `.env` in each app, filled with production values before building):
@@ -180,22 +179,22 @@ Create the release env files (public values only, git-ignored `.env` in each app
 SUPABASE_URL=https://<ref>.supabase.co
 SUPABASE_ANON_KEY=<anon key>
 API_BASE_URL=https://api.<your-domain>/api/v1
-AUTH_REDIRECT_URL=io.zuruv.customer://login-callback
+AUTH_REDIRECT_URL=io.zuruv.app://login-callback
 GOOGLE_AUTH_ENABLED=false
 APPLE_AUTH_ENABLED=false
 PHONE_AUTH_ENABLED=false
 ```
 
-(Owner app: `io.zuruv.owner://login-callback`.) A release build without `API_BASE_URL` throws at start-up on purpose.
+A release build without `API_BASE_URL` throws at start-up on purpose.
 
-**Firebase (push):** add Android apps `com.zuruv.zuruv_customer` and `com.zuruv.zuruv_owner` (package names produced by `flutter create --org com.zuruv`) and the iOS apps; download `google-services.json` into `apps/<app>/android/app/` and `GoogleService-Info.plist` into `apps/<app>/ios/Runner/`. Upload your APNs key in Firebase for iOS. Apps run without Firebase; push is then simply off.
+**Firebase (push):** add ONE Android app `com.zuruv.zuruv` (the package name produced by `flutter create --org com.zuruv --project-name zuruv`) and ONE iOS app; download `google-services.json` into `apps/mobile_app/android/app/` and `GoogleService-Info.plist` into `apps/mobile_app/ios/Runner/`. Upload your APNs key in Firebase for iOS. Apps run without Firebase; push is then simply off.
 
-**Razorpay (customer app):** the Android/iOS runners use `razorpay_flutter`. The key id comes from the backend with each order, nothing to set in the app. Android needs minSdk 21+ (Flutter default is fine).
+**Razorpay (customer role):** the Android/iOS runners use `razorpay_flutter`. The key id comes from the backend with each order, nothing to set in the app. Android needs minSdk 21+ (Flutter default is fine).
 
 **Android release**
 
 ```bash
-cd apps/customer_app            # repeat for apps/owner_app
+cd apps/mobile_app               # the one app: one .aab for customers and owners
 keytool -genkey -v -keystore ~/zuruv-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
 # create android/key.properties (git-ignored) and wire signingConfigs.release in android/app/build.gradle(.kts)
 # per https://docs.flutter.dev/deployment/android#sign-the-app
@@ -208,7 +207,7 @@ Back up the keystore and its passwords outside the repo. Set the app name/icon i
 **iOS release** (macOS only)
 
 ```bash
-cd apps/customer_app
+cd apps/mobile_app
 open ios/Runner.xcworkspace     # set Team, bundle id, enable Push Notifications + Background Modes (Remote notifications) capabilities
 flutter build ipa --release   # bundles the app's .env (use production public values)
 # upload build/ios/ipa/*.ipa with Transporter or Xcode Organizer → TestFlight first
@@ -224,9 +223,9 @@ Use Razorpay **test** mode and a test Supabase user.
 
 1. `GET /health` shows database status `ok`; `/docs` is 404.
 2. Admin login with MFA; dashboard loads; Venues/Bookings/Payments pages load (empty is fine).
-3. Owner app: register → create venue → upload a photo → set hours → publish.
-4. Customer app: register → browse → open venue → pick slot → pay with a Razorpay test card → booking `confirmed`; push/e-mail arrive if configured.
-5. Owner app shows the booking; admin shows booking and payment.
+3. Mobile app, owner role (register as "Venue owner"): register → create venue → upload a photo → set hours → publish.
+4. Mobile app, customer role (register as "Player"; a second account): register → browse → open venue → pick slot → pay with a Razorpay test card → booking `confirmed`; push/e-mail arrive if configured.
+5. The owner account's dashboard shows the booking; admin shows booking and payment.
 6. Customer cancels an unpaid hold (allowed); a paid booking correctly refuses cancellation (Q9 open).
 7. Owner address search returns suggestions (if the Google key is set), otherwise a clear "not configured" message.
 

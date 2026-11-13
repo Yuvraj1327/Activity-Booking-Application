@@ -1,4 +1,6 @@
-# ZURUV Owner app (Step 5)
+# ZURUV Owner features (Step 5) — now part of the one mobile app
+
+> **Update:** the Owner app was merged with the Customer app into `apps/mobile_app` (see [MOBILE_APP.md](MOBILE_APP.md)). The owner screens live in `apps/mobile_app/lib/owner/`, every owner route is under `/owner/...`, and owners sign in through the same login as customers. The text below describes the owner features and still applies; read "Owner app" as "the Owner role of the mobile app" and `apps/owner_app` as `apps/mobile_app`.
 
 Flutter app for venue owners. Same stack and shared package as the Customer app (`packages/flutter_shared`: auth, theme, API client). It is a separate app with its own flows; it never reads the database directly.
 
@@ -8,7 +10,7 @@ Flutter app for venue owners. Same stack and shared package as the Customer app 
 
 ```bash
 ./scripts/bootstrap_flutter.sh
-cd apps/owner_app && cp .env.example .env   # fill in public values
+cd apps/mobile_app && cp .env.example .env   # fill in public values
 flutter run
 flutter analyze && flutter test
 ```

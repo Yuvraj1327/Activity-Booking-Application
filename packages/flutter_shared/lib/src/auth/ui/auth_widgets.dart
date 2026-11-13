@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/zuruv_colors.dart';
 import '../../widgets/responsive.dart';
+import '../models.dart';
+import '../providers.dart';
 
 /// Page frame shared by all auth screens.
 class AuthScaffold extends StatelessWidget {
@@ -153,5 +156,26 @@ class Validators {
   static String? phone(String? v) {
     if (v == null || v.trim().isEmpty) return 'Enter your phone number';
     return _phone.hasMatch(v.trim()) ? null : 'Use international format, e.g. +919876543210';
+  }
+}
+
+
+/// "I am a ..." choice shown when creating an account. It only decides which profile is requested
+/// the first time; the role is then read from the API on every sign-in.
+class AccountTypePicker extends ConsumerWidget {
+  const AccountTypePicker({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(signUpRoleProvider);
+    return SegmentedButton<AppRole>(
+      showSelectedIcon: false,
+      segments: const [
+        ButtonSegment(value: AppRole.customer, icon: Icon(Icons.sports_tennis_rounded), label: Text('Player')),
+        ButtonSegment(value: AppRole.owner, icon: Icon(Icons.storefront_rounded), label: Text('Venue owner')),
+      ],
+      selected: {selected},
+      onSelectionChanged: (s) => ref.read(signUpRoleProvider.notifier).state = s.first,
+    );
   }
 }

@@ -1,4 +1,4 @@
-/// Shared foundation for the ZURUV Customer and Owner apps.
+/// Shared foundation for the ZURUV mobile app (customer and venue-owner roles).
 library;
 
 export 'src/config/app_env.dart';

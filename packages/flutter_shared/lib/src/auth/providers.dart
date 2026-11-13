@@ -14,21 +14,23 @@ final apiClientProvider = Provider<Dio>((ref) => createApiClient());
 
 final authGatewayProvider = Provider<AuthGateway>((ref) => SupabaseAuthGateway(ref.watch(apiClientProvider)));
 
-/// Which kind of account this app accepts. Each app overrides it in `main()`.
-final expectedRoleProvider = Provider<AppRole>((ref) => throw UnimplementedError('override expectedRoleProvider'));
+/// Account types a person may CHOOSE when registering in the mobile app. Admins never register
+/// here: they are created in the database and sign in on the admin website only.
+const signUpRoles = [AppRole.customer, AppRole.owner];
 
-/// App-specific wording for the shared auth screens.
+/// The account type picked on the register / complete-profile screens. It only decides which kind of
+/// profile is REQUESTED the first time; from then on the role comes from the API (the database).
+final signUpRoleProvider = StateProvider<AppRole>((ref) => AppRole.customer);
+
+/// Wording for the shared auth screens.
 class AuthUiConfig {
-  const AuthUiConfig({required this.appName, required this.role, this.tagline = 'Discover. Book. Play.'});
+  const AuthUiConfig({this.appName = 'ZURUV', this.tagline = 'Discover. Book. Play.'});
 
   final String appName;
-  final AppRole role;
   final String tagline;
-
-  bool get isOwner => role == AppRole.owner;
 }
 
-final authUiConfigProvider = Provider<AuthUiConfig>((ref) => throw UnimplementedError('override authUiConfigProvider'));
+final authUiConfigProvider = Provider<AuthUiConfig>((ref) => const AuthUiConfig());
 
 final authControllerProvider = NotifierProvider<AuthController, AppAuthState>(AuthController.new);
 

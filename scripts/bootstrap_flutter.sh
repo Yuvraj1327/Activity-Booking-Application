@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generates the native Android/iOS runners for both apps and fetches dependencies.
+# Generates the native Android/iOS runners for the ZURUV mobile app and fetches dependencies.
 # Run once after cloning (needs Flutter >= 3.27 on your PATH). Existing lib/ and
 # pubspec.yaml are kept; `flutter create .` only adds the missing platform folders.
 set -euo pipefail
@@ -9,17 +9,13 @@ command -v flutter >/dev/null || { echo "Flutter SDK not found on PATH"; exit 1;
 
 (cd "$ROOT/packages/flutter_shared" && flutter pub get)
 
-bootstrap() { # dir project_name org_suffix
-  (cd "$ROOT/apps/$1" \
-    && flutter create --platforms=android,ios --org com.zuruv --project-name "$2" . \
-    && flutter pub get)
-}
-bootstrap customer_app zuruv_customer
-bootstrap owner_app zuruv_owner
+(cd "$ROOT/apps/mobile_app" \
+  && flutter create --platforms=android,ios --org com.zuruv --project-name zuruv . \
+  && flutter pub get)
 
-# Location / photo permissions and the auth deep link for each app.
-python3 "$ROOT/scripts/configure_customer_platforms.py"
-python3 "$ROOT/scripts/configure_owner_platforms.py"
+# Location / photo permissions and the auth deep link.
+python3 "$ROOT/scripts/configure_mobile_platforms.py"
 
-echo "Done. Copy apps/*/env/dev.example.json to dev.json, then:"
-echo "  cd apps/customer_app && flutter run --dart-define-from-file=env/dev.json"
+echo "Done. Copy apps/mobile_app/.env.example to apps/mobile_app/.env, then:"
+echo "  cd apps/mobile_app && flutter run"
+echo "Build (you deploy these yourself):  flutter build apk --release   |   flutter build appbundle --release"

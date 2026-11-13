@@ -13,7 +13,6 @@ class AuthController extends Notifier<AppAuthState> {
   String? _pendingNotice;
 
   AuthGateway get _gateway => ref.read(authGatewayProvider);
-  AppRole get _expectedRole => ref.read(expectedRoleProvider);
 
   @override
   AppAuthState build() {
@@ -60,10 +59,7 @@ class AuthController extends Notifier<AppAuthState> {
       }
     } on ApiException catch (e) {
       if (e.statusCode == 401) {
-        _pendingNotice = 'Your session has expired. Please sign in again.';
-        await _gateway.signOut();
-        state = Unauthenticated(notice: _pendingNotice);
-        _pendingNotice = null;
+        await _signOutWithNotice('Your session has expired. Please sign in again.');
       } else {
         state = AuthFailure(e.isNetworkError ? 'Cannot reach the server. Check your connection.' : e.message);
       }
@@ -74,14 +70,19 @@ class AuthController extends Notifier<AppAuthState> {
     }
   }
 
+  /// Signs out and leaves [notice] on the login screen. The sign-out event may arrive before or
+  /// after this returns, so the notice is held in a local too (never read back from the field).
+  Future<void> _signOutWithNotice(String notice) async {
+    _pendingNotice = notice;
+    await _gateway.signOut();
+    state = Unauthenticated(notice: notice);
+    _pendingNotice = null;
+  }
+
   Future<void> _handleProfile(UserProfile profile) async {
-    if (profile.role != _expectedRole) {
-      // The server says this account is another kind. Never let it into this app.
-      _pendingNotice = 'This is a ${profile.role.label} account. '
-          'Please use the ZURUV ${profile.role.label} app, or register a new ${_expectedRole.label} account.';
-      await _gateway.signOut();
-      state = Unauthenticated(notice: _pendingNotice);
-      _pendingNotice = null;
+    if (profile.role == AppRole.admin) {
+      // Admins use the website only. The API enforces every role again on each request.
+      await _signOutWithNotice('Admin accounts sign in on the ZURUV admin website, not in the mobile app.');
       return;
     }
     state = profile.isActive ? Authenticated(profile) : const AccountSuspended();
@@ -91,16 +92,20 @@ class AuthController extends Notifier<AppAuthState> {
     final meta = _gateway.userMetadata;
     final name = (meta['full_name'] as String?)?.trim();
     final business = (meta['business_name'] as String?)?.trim();
+    // Registered through this app: the chosen account type travelled in the sign-up metadata.
+    // Only customer/owner can be requested; anything else falls back to customer (the API rejects admin).
+    final requested = AppRole.parse(meta['requested_role'] as String?);
+    final role = requested == AppRole.owner ? AppRole.owner : AppRole.customer;
     final complete = name != null &&
         name.isNotEmpty &&
-        (_expectedRole != AppRole.owner || (business != null && business.isNotEmpty));
+        (role != AppRole.owner || (business != null && business.isNotEmpty));
     if (complete) {
       // Registered through this app: create the profile without asking again.
       try {
         final profile = await _gateway.createProfile(CreateProfileRequest(
-          role: _expectedRole,
+          role: role,
           fullName: name,
-          businessName: _expectedRole == AppRole.owner ? business : null,
+          businessName: role == AppRole.owner ? business : null,
         ));
         await _handleProfile(profile);
         return;
@@ -127,11 +132,13 @@ class AuthController extends Notifier<AppAuthState> {
     required String email,
     required String password,
     required String fullName,
+    AppRole role = AppRole.customer,
     String? businessName,
   }) =>
       _gateway.signUp(email: email, password: password, metadata: {
         'full_name': fullName,
-        if (businessName != null) 'business_name': businessName,
+        'requested_role': (role == AppRole.owner ? AppRole.owner : AppRole.customer).name,
+        if (role == AppRole.owner && businessName != null) 'business_name': businessName,
       });
 
   Future<void> signIn(String email, String password) => _gateway.signIn(email: email, password: password);
@@ -153,13 +160,13 @@ class AuthController extends Notifier<AppAuthState> {
   }
 
   /// Submits the "complete your profile" form.
-  Future<void> completeProfile({required String fullName, String? businessName}) async {
+  Future<void> completeProfile({required AppRole role, required String fullName, String? businessName}) async {
     final current = state;
     try {
       final profile = await _gateway.createProfile(CreateProfileRequest(
-        role: _expectedRole,
+        role: role == AppRole.owner ? AppRole.owner : AppRole.customer,
         fullName: fullName,
-        businessName: _expectedRole == AppRole.owner ? businessName : null,
+        businessName: role == AppRole.owner ? businessName : null,
       ));
       await _handleProfile(profile);
     } on ApiException catch (e) {
