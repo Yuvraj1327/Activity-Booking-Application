@@ -337,7 +337,7 @@ class _BlockSheetState extends State<_BlockSheet> {
           Text('Block a time', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: Gap.md),
           DropdownButtonFormField<String?>(
-            value: _courtId,
+            initialValue: _courtId,
             decoration: const InputDecoration(labelText: 'Applies to'),
             items: [
               const DropdownMenuItem<String?>(value: null, child: Text('Whole venue')),

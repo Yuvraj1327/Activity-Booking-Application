@@ -13,6 +13,7 @@ import 'package:zuruv/customer/shared/widgets/common_widgets.dart';
 import 'package:zuruv/customer/features/categories/categories_provider.dart';
 import 'package:zuruv/customer/features/home/home_providers.dart';
 import 'package:zuruv/customer/features/location/location_controller.dart';
+import 'package:zuruv/customer/features/map/venues_map_screen.dart';
 import 'package:zuruv/customer/features/location/location_sheet.dart';
 import 'package:zuruv/customer/features/discovery/filter_sheets.dart';
 import 'package:zuruv/customer/features/discovery/venue_list_controller.dart';
@@ -184,6 +185,11 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
         leading: canPop ? IconButton(onPressed: () => context.pop(), icon: const Icon(Icons.arrow_back_rounded)) : null,
         title: Text(widget.title, style: theme.textTheme.titleLarge),
         actions: [
+          IconButton(
+            tooltip: 'Map view',
+            icon: const Icon(Icons.map_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => VenuesMapScreen(query: query))),
+          ),
           TextButton.icon(
             onPressed: () => showCitySheet(context),
             icon: const Icon(Icons.place_outlined, size: 18),

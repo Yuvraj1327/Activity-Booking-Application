@@ -11,6 +11,7 @@ import 'package:zuruv/customer/shared/widgets/category_icons.dart';
 import 'package:zuruv/customer/shared/widgets/common_widgets.dart';
 import 'package:zuruv/customer/shared/widgets/z_network_image.dart';
 import 'package:zuruv/customer/features/reviews/review_widgets.dart';
+import 'package:zuruv/customer/features/map/venue_location_map.dart';
 import 'package:zuruv/customer/features/venue_details/directions_launcher.dart';
 import 'package:zuruv/customer/features/venue_details/venue_detail_provider.dart';
 
@@ -132,6 +133,8 @@ class _Content extends ConsumerWidget {
                         title: fullAddress.isEmpty ? 'Address not provided' : fullAddress,
                         subtitle: venue.distanceKm == null ? null : '${formatDistance(venue.distanceKm!)} from you',
                       ),
+                      if (venue.latitude != null && venue.longitude != null)
+                        VenueLocationMap(name: venue.name, latitude: venue.latitude!, longitude: venue.longitude!),
                       if (venue.latitude != null && venue.longitude != null)
                         Align(
                           alignment: Alignment.centerLeft,

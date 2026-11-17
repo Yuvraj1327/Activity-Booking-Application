@@ -81,7 +81,7 @@ void main() {
   });
 
   testWidgets('a venue with no photo or rating still renders cleanly', (tester) async {
-    final bare = VenueDetail(id: 'v1', name: 'Ace Arena');
+    final bare = const VenueDetail(id: 'v1', name: 'Ace Arena');
     await openDetails(tester, details: {'v1': bare});
     expect(find.text('New'), findsWidgets);
     expect(find.textContaining('No reviews yet'), findsOneWidget);

@@ -1,4 +1,4 @@
-/// Payment models. The backend decides amounts and statuses; the app only displays them.
+// Payment models. The backend decides amounts and statuses; the app only displays them.
 
 int _int(Object? v) => (v as num?)?.toInt() ?? 0;
 

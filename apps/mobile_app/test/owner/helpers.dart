@@ -219,8 +219,8 @@ class FakeOwnerRepository implements OwnerRepository {
   Future<Dashboard> dashboard() async => dashboardData ?? dashboardWith(cards, rating: 4.6);
 
   @override
-  Future<Analytics> analytics({required String from, required String to}) async => Analytics(
-        performance: const [],
+  Future<Analytics> analytics({required String from, required String to}) async => const Analytics(
+        performance: [],
         totalBookings: unavailable,
         revenue: unavailable,
         utilization: unavailable,

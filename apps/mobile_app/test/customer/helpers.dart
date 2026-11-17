@@ -92,7 +92,7 @@ class FakeVenueRepository implements VenueRepository {
   Future<VenuePageData> venues(VenueQuery query, {required int offset, CancelToken? cancelToken}) async {
     queries.add(query);
     if (venuesError != null) throw venuesError!;
-    var list = all.where((v) {
+    final list = all.where((v) {
       if (query.favoritesOnly && !(v.isFavorite || added.contains(v.id))) return false;
       if (query.text != null && query.text!.isNotEmpty && !v.name.toLowerCase().contains(query.text!.toLowerCase())) return false;
       if (query.category != null && !v.categories.contains(query.category)) return false;

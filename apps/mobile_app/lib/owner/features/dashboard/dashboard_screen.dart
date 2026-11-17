@@ -96,9 +96,9 @@ class _Content extends StatelessWidget {
             crossAxisSpacing: Gap.md,
             childAspectRatio: 1.35,
             children: [
-              StatTile(label: 'Total revenue', icon: Icons.currency_rupee_rounded, note: 'Available with payments'),
+              const StatTile(label: 'Total revenue', icon: Icons.currency_rupee_rounded, note: 'Available with payments'),
               StatTile(label: 'Total bookings', icon: Icons.event_available_rounded, value: '${d.totalBookings}'),
-              StatTile(label: 'Avg. utilization', icon: Icons.pie_chart_outline_rounded, note: 'Available with online booking'),
+              const StatTile(label: 'Avg. utilization', icon: Icons.pie_chart_outline_rounded, note: 'Available with online booking'),
               StatTile(
                 label: 'Avg. rating',
                 icon: Icons.star_rounded,

@@ -327,9 +327,9 @@ class VenueCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
+      children: [
         AspectRatio(aspectRatio: 16 / 9, child: ShimmerBox(radius: Radii.card)),
         SizedBox(height: 12),
         ShimmerBox(height: 16, width: 180, radius: 6),

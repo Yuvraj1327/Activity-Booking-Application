@@ -1,4 +1,4 @@
-/// Booking models. Parsed defensively; the server decides availability, price and status.
+// Booking models. Parsed defensively; the server decides availability, price and status.
 
 int _int(Object? v) => (v as num?)?.toInt() ?? 0;
 

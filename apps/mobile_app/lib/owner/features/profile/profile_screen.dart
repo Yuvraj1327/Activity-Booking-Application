@@ -55,16 +55,16 @@ class ProfileScreen extends ConsumerWidget {
               IconButton(tooltip: 'Edit profile', onPressed: () => context.push('/owner/profile/edit'), icon: const Icon(Icons.edit_rounded)),
             ]),
             const SizedBox(height: Gap.lg),
-            _Group(title: 'Business', tiles: [
+            const _Group(title: 'Business', tiles: [
               _Tile(Icons.business_rounded, 'Business information', 'Name, phone, e-mail, address', '/owner/profile/business'),
               _Tile(Icons.account_balance_rounded, 'Bank & payout settings', 'Set up where payouts go', '/owner/profile/payout'),
             ]),
-            _Group(title: 'Insights', tiles: [
+            const _Group(title: 'Insights', tiles: [
               _Tile(Icons.insights_rounded, 'Analytics', 'Performance by date range', '/owner/analytics'),
               _Tile(Icons.star_rounded, 'Reviews', 'What customers say', '/owner/reviews'),
               _Tile(Icons.notifications_none_rounded, 'Notifications', 'Bookings, payments, reviews', '/owner/notifications'),
             ]),
-            _Group(title: 'Settings', tiles: [
+            const _Group(title: 'Settings', tiles: [
               _Tile(Icons.tune_rounded, 'Notification preferences', 'Choose what you hear about', '/owner/profile/notifications'),
               _Tile(Icons.help_outline_rounded, 'Help & support', null, '/owner/profile/help'),
               _Tile(Icons.description_outlined, 'Terms & policies', null, '/owner/profile/terms'),

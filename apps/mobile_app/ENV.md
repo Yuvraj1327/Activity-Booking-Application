@@ -15,4 +15,9 @@ flutter run
 
 The `.env` is shipped inside the app bundle, so it holds **public values only**: never a service-role key, payment secret or other backend secret.
 
-Location is optional and never requested at launch. Maps/Places goes through the backend (`GOOGLE_MAPS_API_KEY` is a server variable); no Google key belongs in `.env`.
+Location is optional and never requested at launch.
+
+**Google Maps** (public, restricted keys; full guide in `docs/GOOGLE_MAPS_SETUP.md`):
+- `GOOGLE_MAPS_API_KEY_ANDROID`, `GOOGLE_MAPS_API_KEY_IOS`: Maps SDK keys. After editing them run `./tool/sync_native_keys.sh`, which copies them into the git-ignored `android/secrets.properties` and `ios/Flutter/Secrets.xcconfig` (native SDKs cannot read the dotenv asset).
+- `GOOGLE_PLACES_API_KEY`: optional, restricted Places key. Leave empty to use only the backend's Places proxy.
+- Never put the backend's server-side `GOOGLE_MAPS_API_KEY` here.

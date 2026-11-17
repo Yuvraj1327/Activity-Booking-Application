@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:zuruv/core/maps/location_picker_screen.dart';
+import 'package:zuruv/customer/features/location/location_service.dart' show GeoPoint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_shared/flutter_shared.dart';
 import 'package:go_router/go_router.dart';
@@ -326,6 +328,17 @@ class _VenueFormScreenState extends ConsumerState<VenueFormScreen> {
     });
   }
 
+  Future<void> _pickOnMap() async {
+    final lat = double.tryParse(_lat.text.trim());
+    final lng = double.tryParse(_lng.text.trim());
+    final point = await pickLocationOnMap(context, initial: lat == null || lng == null ? null : GeoPoint(lat, lng));
+    if (point == null || !mounted) return;
+    setState(() {
+      _lat.text = point.lat.toStringAsFixed(6);
+      _lng.text = point.lng.toStringAsFixed(6);
+    });
+  }
+
   String? _latValidator(String? v) {
     final text = (v ?? '').trim();
     if (text.isEmpty) return _lng.text.trim().isEmpty ? null : 'Enter latitude too';
@@ -402,7 +415,7 @@ class _VenueFormScreenState extends ConsumerState<VenueFormScreen> {
                   loading: () => const LinearProgressIndicator(),
                   error: (e, _) => Text(errorMessage(e), style: const TextStyle(color: ZuruvColors.error)),
                   data: (list) => DropdownButtonFormField<String>(
-                    value: list.any((c) => c.id == _cityId) ? _cityId : null,
+                    initialValue: list.any((c) => c.id == _cityId) ? _cityId : null,
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'City'),
                     items: [for (final c in list) DropdownMenuItem(value: c.id, child: Text(c.label))],
@@ -430,6 +443,14 @@ class _VenueFormScreenState extends ConsumerState<VenueFormScreen> {
                   decoration: const InputDecoration(labelText: 'Postal code (optional)'),
                 ),
                 const SizedBox(height: Gap.lg),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _pickOnMap,
+                    icon: const Icon(Icons.pin_drop_outlined),
+                    label: const Text('Pick on map'),
+                  ),
+                ),
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Expanded(
                     child: TextFormField(

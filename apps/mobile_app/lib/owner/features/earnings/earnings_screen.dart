@@ -72,7 +72,7 @@ class EarningsScreen extends ConsumerWidget {
                 const SectionHeader('Payment history'),
                 payments.when(
                   loading: () => const Padding(padding: EdgeInsets.all(Gap.lg), child: Center(child: CircularProgressIndicator())),
-                  error: (err, _) => UnavailableCard(
+                  error: (err, _) => const UnavailableCard(
                     title: 'Could not load payments',
                     message: 'Pull down to try again.',
                     icon: Icons.cloud_off_rounded,
