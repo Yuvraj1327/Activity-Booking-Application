@@ -34,6 +34,7 @@ _OPTIONAL_TEXT_FIELDS = (
     "firebase_project_id",
     "firebase_service_account",
     "resend_api_key",
+    "google_maps_api_key",
     "email_from_address",
     "cancellation_min_notice_hours",
     "booking_min_notice_minutes",
@@ -113,10 +114,15 @@ class Settings(BaseSettings):
     # Service-account JSON, either the JSON text itself or a path to the JSON file.
     firebase_service_account: SecretStr | None = None
     resend_api_key: SecretStr | None = None
+    # Google Places (address search). Unset = address search is "not configured".
+    google_maps_api_key: SecretStr | None = None
     email_from_address: str | None = None  # e.g. "ZURUV <bookings@your-verified-domain>"
     # In-process housekeeping loop (outbox retry, payment reconciliation). 0 disables it.
     background_sweep_seconds: int = Field(default=60, ge=0, le=3600)
     payment_reconcile_after_minutes: int = Field(default=3, ge=1, le=1440)
+
+    # Per-client request cap for write/expensive endpoints (app/core/ratelimit.py). 0 disables it.
+    rate_limit_per_minute: int = Field(default=60, ge=0, le=100000)
 
     # Step 8: calendar used to bucket admin reports by day/week/month and to read date filters.
     # A presentation choice only (not a business rule); any IANA zone works.

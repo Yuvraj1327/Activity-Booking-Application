@@ -142,3 +142,7 @@ Refunds, ledger, payouts (no approved policy: Q9, Q10), reviews. Added by the st
 - `review_responses`: one per review (`UNIQUE review_id`), `body` 1-1000 chars; immutable.
 - RLS enabled and all client grants revoked: reads happen only through the API.
 - Migration 0008: indexes `bookings(created_at DESC)`, `profiles(role, created_at DESC)`, `venues(created_at DESC)`.
+
+## SQL Editor package (`supabase/`)
+
+`supabase/migrations/001…010_*.sql` plus `supabase/seed.sql` build this same schema (Alembic head `0009`) without Alembic, for the Supabase SQL Editor. Alembic stays the source of truth; `supabase/verify_sync.sh` proves the two are identical. Instructions: `supabase/README.md`.

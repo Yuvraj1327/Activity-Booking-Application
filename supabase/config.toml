@@ -8,8 +8,9 @@
 # Architecture rules this file must respect (docs/SYSTEM_ARCHITECTURE.md):
 #  - Supabase is used for Authentication, PostgreSQL and Storage only.
 #  - The auto-generated data API is NOT used for application data.
-#  - Application schema and RLS are applied through Alembic (backend/alembic),
-#    not through supabase/migrations (see supabase/migrations/README.md).
+#  - The application schema and RLS are defined by Alembic (backend/alembic, the source
+#    of truth). supabase/migrations/*.sql is an equivalent, verified copy for the SQL Editor;
+#    use one route or the other, never both (see supabase/README.md).
 
 project_id = "zuruv"
 

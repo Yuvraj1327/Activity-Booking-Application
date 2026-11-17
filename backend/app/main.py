@@ -102,10 +102,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     register_exception_handlers(app)
 
     # Added last = outermost: request id is set before CORS/handlers run.
-    if settings.cors_origins:
+    # Dev only: `flutter run -d chrome` picks a random localhost port, so allow any.
+    dev_origin_regex = (
+        r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$" if settings.environment != "production" else None
+    )
+    if settings.cors_origins or dev_origin_regex:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.cors_origins,
+            allow_origin_regex=dev_origin_regex,
             allow_credentials=True,
             allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             allow_headers=["Authorization", "Content-Type", "Idempotency-Key", REQUEST_ID_HEADER],

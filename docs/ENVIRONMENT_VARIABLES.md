@@ -69,6 +69,7 @@ Real credentials are never committed and never placed in Flutter or in `NEXT_PUB
 | `FIREBASE_SERVICE_ACCOUNT` | Secret. Service-account JSON text **or** a path to the file. |
 | `RESEND_API_KEY` | Secret. |
 | `EMAIL_FROM_ADDRESS` | Sender on a Resend-verified domain, e.g. `ZURUV <bookings@your-domain>`. |
+| `GOOGLE_MAPS_API_KEY` | Secret, optional. Google Places API (New) key used by `/api/v1/places/*`. Never sent to clients or logged. Unset = those endpoints return `503 PLACES_NOT_CONFIGURED`; the rest of the API is unaffected. |
 | `BACKGROUND_SWEEP_SECONDS` | Default 60; `0` disables the in-process retry/reconciliation loop. |
 | `PAYMENT_RECONCILE_AFTER_MINUTES` | Default 3; open payments older than this are reconciled with Razorpay by the sweep. |
 

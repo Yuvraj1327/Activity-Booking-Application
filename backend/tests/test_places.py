@@ -149,3 +149,33 @@ async def test_adapter_maps_google_errors():
     assert not unconfigured.configured
     with pytest.raises(PlacesError):
         await unconfigured.autocomplete("koram", None)
+
+
+# ------------------------------------------------------------------ configured vs missing key, through real wiring
+def test_settings_read_google_maps_api_key_from_env(monkeypatch):
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "env-key-not-real")
+    cfg = Settings(_env_file=None, environment="test")
+    assert cfg.google_maps_api_key.get_secret_value() == "env-key-not-real"
+    assert "env-key-not-real" not in repr(cfg)
+    assert GooglePlaces(cfg).configured
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "  ")
+    assert Settings(_env_file=None, environment="test").google_maps_api_key is None
+
+
+def test_missing_key_does_not_break_startup_or_other_apis(clean_db, monkeypatch):
+    monkeypatch.delenv("GOOGLE_MAPS_API_KEY", raising=False)
+    cust = auth_headers(seed_profile(clean_db, "customer"))
+    cfg = make_settings(supabase_jwt_secret=JWT_SECRET, supabase_url=SUPABASE_URL, database_url=clean_db)
+    with TestClient(create_app(cfg)) as api:  # real GooglePlaces, no key
+        r = api.get(f"{API}/places/autocomplete", params={"q": "koram"}, headers=cust)
+        assert (r.status_code, r.json()["code"]) == (503, "PLACES_NOT_CONFIGURED")
+        r = api.get(f"{API}/places/ChIJabcdefghijk", headers=cust)
+        assert (r.status_code, r.json()["code"]) == (503, "PLACES_NOT_CONFIGURED")
+        assert api.get("/health").status_code == 200
+
+
+def test_gateway_survives_settings_without_the_attribute():
+    class Old:  # simulates a Settings class that predates the key
+        pass
+
+    assert not GooglePlaces(Old()).configured  # type: ignore[arg-type]

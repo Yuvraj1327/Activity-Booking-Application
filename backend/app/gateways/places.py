@@ -56,8 +56,9 @@ class GooglePlaces:
     BASE = "https://places.googleapis.com/v1"
 
     def __init__(self, settings: Settings, client: httpx.AsyncClient | None = None) -> None:
-        key = settings.google_maps_api_key
-        self._key = key.get_secret_value() if key else None
+        # getattr: a missing/blank key (or an older Settings) must never crash app startup.
+        key = getattr(settings, "google_maps_api_key", None)
+        self._key = (key.get_secret_value().strip() or None) if key else None
         self._client = client
 
     @property

@@ -79,3 +79,7 @@ docker-data/
 Thumbs.db
 .vscode/*
 !.vscode/extensions.json
+
+# --- Native Maps keys generated from the app .env (apps/mobile_app/tool/sync_native_keys.sh) ---
+**/android/secrets.properties
+**/ios/Flutter/Secrets.xcconfig
