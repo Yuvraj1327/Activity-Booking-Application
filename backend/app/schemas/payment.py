@@ -193,11 +193,17 @@ class DeviceTokenRemoveRequest(StrictModel):
 class PreferencesOut(BaseModel):
     push_enabled: bool
     email_enabled: bool
+    booking_enabled: bool = True
+    payment_enabled: bool = True
+    promo_enabled: bool = True
 
 
 class PreferencesUpdate(StrictModel):
     push_enabled: bool | None = None
     email_enabled: bool | None = None
+    booking_enabled: bool | None = None
+    payment_enabled: bool | None = None
+    promo_enabled: bool | None = None
 
 
 class UnreadCount(BaseModel):

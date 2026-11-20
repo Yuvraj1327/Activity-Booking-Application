@@ -8,6 +8,7 @@ import '../network/api_exception.dart';
 class FakeAuthGateway implements AuthGateway {
   FakeAuthGateway({
     this.hasSession = false,
+    this.authProvider,
     this.me,
     this.meError,
     Map<String, dynamic>? metadata,
@@ -17,6 +18,11 @@ class FakeAuthGateway implements AuthGateway {
   bool hasSession;
   @override
   Map<String, dynamic> userMetadata;
+  @override
+  String? authProvider;
+
+  /// When set, `signInWithOAuth` throws it (e.g. [AuthCancelledException]).
+  Object? oauthError;
 
   /// What `GET /auth/me` returns.
   MeResponse? me;
@@ -81,7 +87,20 @@ class FakeAuthGateway implements AuthGateway {
   }
 
   @override
-  Future<void> signInWithOAuth(OAuthKind kind) async => calls.add('oauth:${kind.name}');
+  Future<void> signOutEverywhere() async {
+    calls.add('signOutEverywhere');
+    hasSession = false;
+    emit(GatewayEvent.signedOut);
+  }
+
+  @override
+  DateTime? get sessionStartedAt => null;
+
+  @override
+  Future<void> signInWithOAuth(OAuthKind kind) async {
+    calls.add('oauth:${kind.name}');
+    if (oauthError != null) throw oauthError!;
+  }
   @override
   Future<void> sendPhoneOtp(String phone) async => calls.add('sendPhoneOtp');
   @override

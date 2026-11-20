@@ -100,6 +100,9 @@ class NotificationPreference(Base):
     )
     push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    booking_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    payment_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    promo_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )

@@ -120,3 +120,68 @@ def test_updates_are_audited(api, clean_db):
     assert [(r["action"], r["actor_id"], r["actor_role"]) for r in rows] == [
         ("profile.updated", uid, "customer")
     ]
+
+
+def test_language_interests_and_unknown_values(api, clean_db):
+    uid = seed_profile(clean_db, "customer")
+    h = auth_headers(uid)
+    assert api.get("/api/v1/profiles/me", headers=h).json()["language"] == "en"
+    assert api.patch("/api/v1/profiles/me", json={"language": "hi"}, headers=h).json()["language"] == "hi"
+    assert api.patch("/api/v1/profiles/me", json={"language": "xx"}, headers=h).status_code == 422
+    assert api.patch("/api/v1/profiles/me", json={"language": None}, headers=h).status_code == 422
+
+    cat = sql(
+        clean_db, "INSERT INTO public.categories (name, slug) VALUES ('Football','football') RETURNING id"
+    )[0]["id"]
+    ok = api.patch("/api/v1/customers/me", json={"preferred_category_ids": [str(cat), str(cat)]}, headers=h)
+    assert ok.status_code == 200 and ok.json()["preferred_category_ids"] == [str(cat)]
+    bad = api.patch("/api/v1/customers/me", json={"preferred_category_ids": [str(uuid.uuid4())]}, headers=h)
+    assert bad.status_code == 422 and bad.json()["code"] == "INVALID_CATEGORY"
+    assert (
+        api.patch("/api/v1/customers/me", json={"preferred_category_ids": []}, headers=h).json()[
+            "preferred_category_ids"
+        ]
+        == []
+    )
+
+
+@pytest.mark.parametrize("role", ["customer", "owner"])
+def test_deletion_request_and_cancel(api, clean_db, role):
+    uid = seed_profile(clean_db, role)
+    h = auth_headers(uid)
+    r = api.post("/api/v1/profiles/me/deletion-request", headers=h)
+    assert r.status_code == 200 and r.json()["deletion_requested_at"] is not None
+    assert api.get("/api/v1/profiles/me", headers=h).json()["status"] == "active"  # nothing is deleted yet
+    again = api.post("/api/v1/profiles/me/deletion-request", headers=h)
+    assert again.json()["deletion_requested_at"] == r.json()["deletion_requested_at"]
+    cancelled = api.delete("/api/v1/profiles/me/deletion-request", headers=h)
+    assert cancelled.json()["deletion_requested_at"] is None
+    assert api.post("/api/v1/profiles/me/deletion-request").status_code == 401
+
+
+@pytest.mark.parametrize("role", ["customer", "owner"])
+def test_support_tickets_are_private_validated_and_limited(api, clean_db, role):
+    uid = seed_profile(clean_db, role)
+    other = seed_profile(clean_db, role)
+    h = auth_headers(uid)
+    body = {
+        "kind": "issue",
+        "subject": "Slots missing",
+        "message": "The 7 PM slot does not show up.",
+        "platform": "ios",
+    }
+    r = api.post("/api/v1/support/tickets", json=body, headers=h)
+    assert r.status_code == 201 and r.json()["status"] == "open"
+    assert [t["subject"] for t in api.get("/api/v1/support/tickets", headers=h).json()] == ["Slots missing"]
+    assert api.get("/api/v1/support/tickets", headers=auth_headers(other)).json() == []
+    assert (
+        api.post("/api/v1/support/tickets", json={**body, "message": "short"}, headers=h).status_code == 422
+    )
+    assert api.post("/api/v1/support/tickets", json={**body, "kind": "spam"}, headers=h).status_code == 422
+    assert (
+        api.post("/api/v1/support/tickets", json={**body, "user_id": str(other)}, headers=h).status_code
+        == 422
+    )
+    for _ in range(4):
+        assert api.post("/api/v1/support/tickets", json=body, headers=h).status_code == 201
+    assert api.post("/api/v1/support/tickets", json=body, headers=h).status_code == 409

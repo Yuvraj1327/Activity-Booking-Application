@@ -24,9 +24,15 @@ final signUpRoleProvider = StateProvider<AppRole>((ref) => AppRole.customer);
 
 /// Wording for the shared auth screens.
 class AuthUiConfig {
-  const AuthUiConfig({this.appName = 'ZURUV', this.tagline = 'Discover. Book. Play.'});
+  const AuthUiConfig({this.appName = 'ZURUV', this.tagline = 'Discover. Book. Play.', this.logoAsset, this.backgroundAsset});
+
+  /// Optional full-bleed background image shown behind the auth screens.
+  final String? backgroundAsset;
 
   final String appName;
+
+  /// App asset path of the brand logo shown on the auth screens (text name when null).
+  final String? logoAsset;
   final String tagline;
 }
 

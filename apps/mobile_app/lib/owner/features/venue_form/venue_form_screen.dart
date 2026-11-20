@@ -533,7 +533,7 @@ class _VenueFormScreenState extends ConsumerState<VenueFormScreen> {
 
   Widget _photosLocked(ThemeData theme) => Container(
         padding: const EdgeInsets.all(Gap.lg),
-        decoration: BoxDecoration(color: ZuruvColors.primaryTint, borderRadius: BorderRadius.circular(Radii.card)),
+        decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(Radii.card)),
         child: Row(children: [
           Icon(Icons.photo_library_outlined, color: theme.colorScheme.primary),
           const SizedBox(width: Gap.md),
@@ -578,8 +578,8 @@ class _VenueFormScreenState extends ConsumerState<VenueFormScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: ZuruvColors.border),
-                    color: ZuruvColors.primaryTint,
+                    border: Border.all(color: Theme.of(context).colorScheme.outline),
+                    color: Theme.of(context).colorScheme.primaryContainer,
                   ),
                   child: _uploading
                       ? const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)))

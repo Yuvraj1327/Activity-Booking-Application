@@ -1,9 +1,10 @@
 """Profile business logic: registration after sign-in, and self-service updates."""
 
 import logging
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,9 +16,15 @@ from app.core.errors import (
 )
 from app.core.logging import request_id_ctx
 from app.core.security import TokenClaims
-from app.models import AuditLog, CustomerProfile, OwnerProfile, Profile
+from app.models import AuditLog, Category, CustomerProfile, OwnerProfile, Profile, SupportTicket
 from app.repositories.profiles import ProfileRepository
-from app.schemas.profile import CustomerUpdate, OwnerUpdate, ProfileCreate, ProfileUpdate
+from app.schemas.profile import (
+    CustomerUpdate,
+    OwnerUpdate,
+    ProfileCreate,
+    ProfileUpdate,
+    SupportTicketCreate,
+)
 from app.services.notifications import NotificationService
 from app.utils.phone import normalize_claim_phone
 
@@ -146,6 +153,15 @@ class ProfileService:
         city = changes.get("preferred_city_id")
         if city is not None and not await self.repo.active_city_exists(city):
             raise ValidationFailedError("Unknown city.", code="INVALID_CITY")
+        interests = changes.get("preferred_category_ids")
+        if interests is not None:
+            interests = list(dict.fromkeys(interests))
+            known = set(
+                (await self.session.scalars(select(Category.id).where(Category.id.in_(interests)))).all()
+            )
+            if known != set(interests):
+                raise ValidationFailedError("Unknown sport.", code="INVALID_CATEGORY")
+            changes["preferred_category_ids"] = interests
         for name, value in changes.items():
             setattr(customer, name, value)
         profile = self._require(await self.repo.get_profile(user_id))
@@ -164,6 +180,55 @@ class ProfileService:
         await self.session.commit()
         await self.session.refresh(owner)
         return owner
+
+    # ------------------------------------------------------------------ account deletion request
+    async def request_deletion(self, user_id: UUID) -> Profile:
+        """Record that the user wants the account deleted. Nothing is removed here: an administrator
+        reviews the request (bookings and payments may need to be settled first) and the user can
+        cancel it until then."""
+        profile = self._require(await self.repo.get_profile(user_id))
+        if profile.deletion_requested_at is None:
+            profile.deletion_requested_at = datetime.now(UTC)
+            await self.repo.add_audit(self._audit(profile, "profile.deletion_requested"))
+            await self.session.commit()
+            await self.session.refresh(profile)
+        return profile
+
+    async def cancel_deletion(self, user_id: UUID) -> Profile:
+        profile = self._require(await self.repo.get_profile(user_id))
+        if profile.deletion_requested_at is not None:
+            profile.deletion_requested_at = None
+            await self.repo.add_audit(self._audit(profile, "profile.deletion_cancelled"))
+            await self.session.commit()
+            await self.session.refresh(profile)
+        return profile
+
+    # ------------------------------------------------------------------ support
+    MAX_TICKETS_PER_HOUR = 5
+
+    async def create_ticket(self, user_id: UUID, body: SupportTicketCreate) -> SupportTicket:
+        since = datetime.now(UTC) - timedelta(hours=1)
+        recent = await self.session.scalar(
+            select(func.count())
+            .select_from(SupportTicket)
+            .where(SupportTicket.user_id == user_id, SupportTicket.created_at >= since)
+        )
+        if (recent or 0) >= self.MAX_TICKETS_PER_HOUR:
+            raise ConflictError("Too many messages sent. Please try again later.", code="RATE_LIMITED")
+        ticket = SupportTicket(user_id=user_id, **body.model_dump())
+        self.session.add(ticket)
+        await self.session.commit()
+        await self.session.refresh(ticket)
+        return ticket
+
+    async def list_tickets(self, user_id: UUID, limit: int = 20) -> list[SupportTicket]:
+        rows = await self.session.scalars(
+            select(SupportTicket)
+            .where(SupportTicket.user_id == user_id)
+            .order_by(SupportTicket.created_at.desc())
+            .limit(limit)
+        )
+        return list(rows.all())
 
     @staticmethod
     def _require[T](row: T | None) -> T:

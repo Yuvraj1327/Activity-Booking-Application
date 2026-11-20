@@ -49,6 +49,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
     try {
       await action();
+    } on AuthCancelledException {
+      // The user closed the Google sheet: stay on the login screen, no error.
     } catch (e) {
       if (mounted) setState(() => _error = _message(e));
     } finally {
@@ -533,7 +535,8 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   }
 
   Future<void> _submit() async {
-    final role = ref.read(signUpRoleProvider);
+    final social = ref.read(authControllerProvider.notifier).isSocialSignUp;
+    final role = social ? AppRole.customer : ref.read(signUpRoleProvider);
     final isOwner = role == AppRole.owner;
     if (!_form.currentState!.validate()) return;
     setState(() => _loading = true);
@@ -549,7 +552,8 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   Widget build(BuildContext context) {
     final cfg = ref.watch(authUiConfigProvider);
     final s = ref.watch(authControllerProvider);
-    final isOwner = ref.watch(signUpRoleProvider) == AppRole.owner;
+    final social = ref.read(authControllerProvider.notifier).isSocialSignUp;
+    final isOwner = !social && ref.watch(signUpRoleProvider) == AppRole.owner;
     final error = s is NeedsProfile ? s.error : null;
     return AuthScaffold(
       appName: cfg.appName,
@@ -557,8 +561,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       subtitle: 'Choose your account type and add a few details to finish setting up.',
       children: [
         if (error != null) AuthBanner(message: error),
-        const AccountTypePicker(),
-        const SizedBox(height: 16),
+        if (!social) ...[const AccountTypePicker(), const SizedBox(height: 16)],
         Form(
           key: _form,
           child: Column(

@@ -63,6 +63,10 @@ class NotificationService:
         prefs = await self.s.get(NotificationPreference, user_id)
         push_on = prefs.push_enabled if prefs else True
         email_on = prefs.email_enabled if prefs else True
+        switch = type_switch(type_)
+        if prefs is not None and switch is not None and not getattr(prefs, switch):
+            # The user turned this kind of notification off: keep the in-app copy, send nothing else.
+            push_on = email_on = False
         # Only ids go into `data` (used for tap navigation). No amounts, no tokens, no secrets.
         data: dict[str, Any] = {}
         if booking_id:
@@ -214,26 +218,36 @@ async def remove_token(session: AsyncSession, user_id: UUID, token: str) -> None
     await session.commit()
 
 
-async def get_preferences(session: AsyncSession, user_id: UUID) -> tuple[bool, bool]:
+PREFERENCE_FIELDS = ("push_enabled", "email_enabled", "booking_enabled", "payment_enabled", "promo_enabled")
+
+# Notification type prefix -> the preference switch that governs it. Other types (reviews, admin
+# alerts, account status) are always delivered through the push/e-mail master switches only.
+TYPE_SWITCH = {"booking": "booking_enabled", "payment": "payment_enabled", "promo": "promo_enabled"}
+
+
+def type_switch(type_: str) -> str | None:
+    return TYPE_SWITCH.get(type_.split(".", 1)[0])
+
+
+async def get_preferences(session: AsyncSession, user_id: UUID) -> dict[str, bool]:
     prefs = await session.get(NotificationPreference, user_id)
-    return (prefs.push_enabled, prefs.email_enabled) if prefs else (True, True)
+    return {f: (getattr(prefs, f) if prefs else True) for f in PREFERENCE_FIELDS}
 
 
 async def set_preferences(
-    session: AsyncSession, user_id: UUID, push_enabled: bool | None, email_enabled: bool | None
-) -> tuple[bool, bool]:
-    cur_push, cur_email = await get_preferences(session, user_id)
-    push = cur_push if push_enabled is None else push_enabled
-    mail = cur_email if email_enabled is None else email_enabled
-    stmt = pg_insert(NotificationPreference).values(user_id=user_id, push_enabled=push, email_enabled=mail)
+    session: AsyncSession, user_id: UUID, changes: dict[str, bool | None]
+) -> dict[str, bool]:
+    current = await get_preferences(session, user_id)
+    merged = {**current, **{k: v for k, v in changes.items() if v is not None and k in PREFERENCE_FIELDS}}
+    stmt = pg_insert(NotificationPreference).values(user_id=user_id, **merged)
     await session.execute(
         stmt.on_conflict_do_update(
             index_elements=[NotificationPreference.user_id],
-            set_={"push_enabled": push, "email_enabled": mail, "updated_at": datetime.now(UTC)},
+            set_={**merged, "updated_at": datetime.now(UTC)},
         )
     )
     await session.commit()
-    return push, mail
+    return merged
 
 
 async def unread_count(session: AsyncSession, user_id: UUID) -> int:

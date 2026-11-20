@@ -1,17 +1,20 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { navGroups } from "@/lib/nav";
+import { ArrowRight, Trophy } from "lucide-react";
+import { navGroups, settingsItem } from "@/lib/nav";
 
 export function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-card md:flex md:w-[4.5rem] lg:w-64">
+    <aside className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-card md:flex md:w-[4.5rem] lg:w-72">
       <div className="flex h-16 items-center gap-2 px-4 lg:px-6">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">Z</span>
-        <span className="hidden text-lg font-bold tracking-tight text-primary lg:inline">ZURUV</span>
+        <Image src="/logo-mark.png" alt="ZURUV" width={36} height={36} className="size-9 shrink-0 rounded-md bg-white lg:hidden" />
+        <Image src="/logo.png" alt="ZURUV" width={800} height={168} className="hidden h-9 w-auto lg:block dark:lg:hidden" />
+        <Image src="/logo-dark.png" alt="ZURUV" width={800} height={168} className="hidden h-9 w-auto dark:lg:block" />
         <span className="ml-auto hidden rounded-full bg-primary-tint px-2 py-0.5 text-[10px] font-semibold uppercase text-primary lg:inline">Admin</span>
       </div>
       <nav aria-label="Main" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-2">
@@ -40,6 +43,41 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+      <div className="hidden px-3 pb-3 lg:[@media(min-height:880px)]:block">
+        <Link
+          href="/venues"
+          className="relative block overflow-hidden rounded-2xl bg-gradient-to-br from-primary-tint to-card p-4 ring-1 ring-border transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <Trophy className="absolute -right-2 -top-2 size-16 rotate-12 text-primary/15" aria-hidden />
+          <p className="relative text-base font-semibold leading-snug">Grow your sports marketplace</p>
+          <p className="relative mt-1.5 text-xs text-muted-foreground">Add venues, manage bookings and increase activity.</p>
+          <span className="relative mt-3 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground ml-auto">
+            <ArrowRight className="size-4" aria-hidden />
+            <span className="sr-only">Go to venues</span>
+          </span>
+        </Link>
+      </div>
+      <div className="border-t border-border px-3 py-3">
+        {(() => {
+          const { label, href, icon: Icon } = settingsItem;
+          const active = pathname === href || pathname.startsWith(`${href}/`);
+          return (
+            <Link
+              href={href}
+              title={label}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex items-center justify-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium lg:justify-start",
+                active ? "bg-primary-tint text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              <Icon className="size-[18px] shrink-0" aria-hidden />
+              <span className="hidden lg:inline">{label}</span>
+              <span className="sr-only lg:hidden">{label}</span>
+            </Link>
+          );
+        })()}
+      </div>
     </aside>
   );
 }
@@ -49,7 +87,7 @@ export function MobileNav() {
   const pathname = usePathname();
   return (
     <nav aria-label="Main (compact)" className="flex gap-1 overflow-x-auto border-b border-border bg-card px-3 py-2 md:hidden">
-      {navGroups.flatMap((g) => g.items).map(({ label, href }) => {
+      {[...navGroups.flatMap((g) => g.items), settingsItem].map(({ label, href }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link key={href} href={href} aria-current={active ? "page" : undefined}

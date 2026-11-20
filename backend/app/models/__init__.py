@@ -10,7 +10,7 @@ from app.models.payment import (
     UserDeviceToken,
 )
 from app.models.review import Review, ReviewResponse
-from app.models.system import AuditLog, Notification
+from app.models.system import AuditLog, Notification, SupportTicket
 from app.models.venue import (
     Favorite,
     ScheduleException,
@@ -23,6 +23,7 @@ from app.models.venue import (
 )
 
 __all__ = [
+    "SupportTicket",
     "Review",
     "ReviewResponse",
     "AvailabilityBlock",

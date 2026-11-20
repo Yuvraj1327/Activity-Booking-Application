@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'web_maps_loader.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,17 +14,24 @@ class MapsConfig {
   static String _env(String name) => dotenv.isInitialized ? (dotenv.maybeGet(name) ?? '').trim() : '';
 
   /// Key for the Maps SDK on this platform ('' when not configured or unsupported).
-  static String get nativeKey => switch (defaultTargetPlatform) {
+  static String get nativeKey => kIsWeb ? _env('GOOGLE_MAPS_API_KEY_WEB') : switch (defaultTargetPlatform) {
         TargetPlatform.android => _env('GOOGLE_MAPS_API_KEY_ANDROID'),
         TargetPlatform.iOS => _env('GOOGLE_MAPS_API_KEY_IOS'),
         _ => '',
       };
 
-  /// Maps SDK for Android / iOS only; web, macOS etc. use the fallback.
+  /// Android, iOS and web (Maps JavaScript API); macOS etc. use the fallback.
   static bool get isSupportedPlatform =>
-      !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+      kIsWeb || defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
 
-  static bool get mapsAvailable => isSupportedPlatform && nativeKey.isNotEmpty;
+  static bool _webLoaded = false;
+
+  /// Web only: loads the Maps JavaScript API once at startup. Call before `runApp`.
+  static Future<void> initWeb() async {
+    if (kIsWeb) _webLoaded = await loadWebMaps(_env('GOOGLE_MAPS_API_KEY_WEB'));
+  }
+
+  static bool get mapsAvailable => isSupportedPlatform && nativeKey.isNotEmpty && (!kIsWeb || _webLoaded);
 
   /// Restricted Places key for direct autocomplete calls ('' = use the backend proxy only).
   static String get placesKey => _env('GOOGLE_PLACES_API_KEY');

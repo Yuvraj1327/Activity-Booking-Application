@@ -42,7 +42,7 @@ export function TrendChart({
     <>
       <XAxis dataKey="label" tick={axis} tickLine={false} axisLine={false} minTickGap={16} />
       <YAxis tick={axis} tickLine={false} axisLine={false} allowDecimals={false} width={48} tickFormatter={fmt} />
-      <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ borderRadius: 8, borderColor: "var(--border)" }} />
+      <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ borderRadius: 8, borderColor: "var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)" }} />
       {series.length > 1 && <Legend formatter={(v) => <span style={{ color: "var(--muted-foreground)" }}>{v}</span>} />}
     </>
   );
@@ -67,7 +67,7 @@ export function DonutChart({ title, data }: { title: string; data: { name: strin
         <Pie data={data} dataKey="value" nameKey="name" cy="42%" innerRadius={56} outerRadius={86} paddingAngle={2}>
           {data.map((d, i) => <Cell key={d.name} fill={C[i % C.length]} />)}
         </Pie>
-        <Tooltip contentStyle={{ borderRadius: 8, borderColor: "var(--border)" }} />
+        <Tooltip contentStyle={{ borderRadius: 8, borderColor: "var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)" }} />
         <Legend formatter={(v) => <span style={{ color: "var(--muted-foreground)" }}>{v}</span>} />
       </PieChart>
     </Box>
@@ -81,7 +81,7 @@ export function HBarChart({ title, data, color = 0 }: { title: string; data: { n
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
         <XAxis type="number" tick={axis} tickLine={false} axisLine={false} allowDecimals={false} />
         <YAxis type="category" dataKey="name" tick={axis} tickLine={false} axisLine={false} width={120} />
-        <Tooltip contentStyle={{ borderRadius: 8, borderColor: "var(--border)" }} />
+        <Tooltip contentStyle={{ borderRadius: 8, borderColor: "var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)" }} />
         <Bar dataKey="value" fill={C[color]} radius={[0, 4, 4, 0]} />
       </BarChart>
     </Box>

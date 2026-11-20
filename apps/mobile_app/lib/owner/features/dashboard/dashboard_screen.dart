@@ -168,7 +168,7 @@ class _ActivityRow extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
-        backgroundColor: ZuruvColors.primaryTint,
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         child: Icon(iconForNotification(n.type), color: Theme.of(context).colorScheme.primary, size: 20),
       ),
       title: Text(n.title, maxLines: 1, overflow: TextOverflow.ellipsis),

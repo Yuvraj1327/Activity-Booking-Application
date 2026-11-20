@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_shared/flutter_shared.dart';
 
 import 'package:zuruv/owner/features/profile/avatar_service.dart';
 
@@ -31,7 +30,7 @@ class AvatarView extends ConsumerWidget {
     }
     return CircleAvatar(
       radius: radius,
-      backgroundColor: ZuruvColors.primaryTint,
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       backgroundImage: image,
       child: image == null ? fallback : null,
     );

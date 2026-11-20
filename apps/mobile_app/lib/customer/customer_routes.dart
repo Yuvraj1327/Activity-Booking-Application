@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/settings/settings_routes.dart';
 import 'features/booking/booking_screen.dart';
 import 'features/bookings/booking_details_screen.dart';
 import 'features/bookings/bookings_screen.dart';
@@ -40,6 +41,7 @@ List<RouteBase> customerRoutes() => [
       GoRoute(path: '/category/:slug', builder: (_, state) => _CategoryRoute(slug: state.pathParameters['slug']!)),
       GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
       GoRoute(path: '/profile/edit', builder: (_, __) => const EditProfileScreen()),
+      ...settingsRoutes('/settings'),
     ];
 
 /// Results page for one sport. The title comes from the API's category name.

@@ -95,7 +95,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         Container(
                           width: 168,
                           height: 168,
-                          decoration: const BoxDecoration(color: ZuruvColors.primaryTint, shape: BoxShape.circle),
+                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
                           child: Icon(page.icon, size: 76, color: theme.colorScheme.primary),
                         ),
                         const SizedBox(height: 40),
@@ -118,7 +118,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     width: i == _index ? 24 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: i == _index ? theme.colorScheme.primary : ZuruvColors.border,
+                      color: i == _index ? theme.colorScheme.primary : Theme.of(context).colorScheme.outline,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),

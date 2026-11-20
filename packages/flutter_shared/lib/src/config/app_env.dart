@@ -36,6 +36,14 @@ class AppEnv {
   static bool get appleAuthEnabled => _flag('APPLE_AUTH_ENABLED');
   static bool get phoneAuthEnabled => _flag('PHONE_AUTH_ENABLED');
 
+  /// OAuth *Web* client ID (Google Cloud Console). Also the client ID pasted into Supabase's Google
+  /// provider; Google puts it in the ID token's audience so Supabase accepts the token. Public value.
+  /// When empty, Google sign-in falls back to Supabase's browser (redirect) flow.
+  static String get googleWebClientId => _get('GOOGLE_WEB_CLIENT_ID');
+
+  /// OAuth *iOS* client ID (bundle id com.zuruv.zuruv). Public value; used on iOS only.
+  static String get googleIosClientId => _get('GOOGLE_IOS_CLIENT_ID');
+
   static bool get supabaseConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
   /// `GET /health` lives at the server root, outside the versioned prefix.

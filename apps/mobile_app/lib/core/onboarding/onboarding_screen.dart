@@ -1,38 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_shared/flutter_shared.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:zuruv/core/constants/tokens.dart';
 import 'package:zuruv/core/storage/preferences.dart';
 
 /// Whether the first-run intro has been completed on this device.
 class OnboardingController extends Notifier<bool> {
   @override
-  bool build() => ref.read(sharedPreferencesProvider).getBool(PrefKeys.onboardingDone) ?? false;
+  bool build() =>
+      ref.read(sharedPreferencesProvider).getBool(PrefKeys.onboardingDone) ??
+      false;
 
   Future<void> complete() async {
     state = true;
-    await ref.read(sharedPreferencesProvider).setBool(PrefKeys.onboardingDone, true);
+    await ref
+        .read(sharedPreferencesProvider)
+        .setBool(PrefKeys.onboardingDone, true);
   }
 }
 
-final onboardingDoneProvider = NotifierProvider<OnboardingController, bool>(OnboardingController.new);
+final onboardingDoneProvider =
+    NotifierProvider<OnboardingController, bool>(OnboardingController.new);
 
 class _Page {
-  const _Page(this.icon, this.title, this.body);
-  final IconData icon;
+  const _Page(this.image, this.title, this.body);
+  final String image;
   final String title;
   final String body;
 }
 
+// Blue palette of the onboarding design (local to this screen).
+const _blue = Color(0xFF0B4FD8);
+const _blueDot = Color(0xFFC9D8F2);
+const _ink = Color(0xFF0F1B33);
+const _muted = Color(0xFF4A5568);
+
 const _pages = [
-  _Page(Icons.travel_explore_rounded, 'Discover venues near you',
-      'Browse badminton courts, pools, gyms, turfs and more in your city, with photos, prices and ratings.'),
-  _Page(Icons.tune_rounded, 'Find the perfect spot',
-      'Search by sport, filter by price and distance, and save your favourites to come back to.'),
-  _Page(Icons.event_available_rounded, 'Book in a few taps',
-      'See the live slots, pick a time and pay securely to confirm your booking.'),
+  _Page(
+      'assets/images/onboarding/onboarding_1_discover.png',
+      'Discover venues\nnear you',
+      'Browse courts, turfs, gyms, pools and more in your city.'),
+  _Page(
+      'assets/images/onboarding/onboarding_2_find.png',
+      'Find the perfect\nspot',
+      'Search by sport, location, price and amenities.'),
+  _Page('assets/images/onboarding/onboarding_3_book.png', 'Book in a few taps',
+      'Check live availability, pick a time and pay securely.'),
+  _Page('assets/images/onboarding/onboarding_4_play.png',
+      'Play, book\nand repeat', 'Your one-stop app for all sports activities.'),
 ];
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -62,77 +77,139 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final theme = Theme.of(context);
     final last = _index == _pages.length - 1;
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 8, 12, 0),
-                child: TextButton(
-                  onPressed: () => _finish(next: '/login'),
-                  child: const Text('Skip'),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFEAF2FF), Color(0xFFF7FAFF)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 4, 16, 0),
+                  child: TextButton(
+                    onPressed: () => _finish(next: '/login'),
+                    style: TextButton.styleFrom(foregroundColor: _blue),
+                    child: const Text('Skip',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 16)),
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: PageView.builder(
-                controller: _controller,
-                itemCount: _pages.length,
-                onPageChanged: (i) => setState(() => _index = i),
-                itemBuilder: (context, i) {
-                  final page = _pages[i];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+              Expanded(
+                child: PageView.builder(
+                  controller: _controller,
+                  itemCount: _pages.length,
+                  onPageChanged: (i) => setState(() => _index = i),
+                  itemBuilder: (context, i) {
+                    final page = _pages[i];
+                    return Column(
                       children: [
-                        Container(
-                          width: 168,
-                          height: 168,
-                          decoration: const BoxDecoration(color: ZuruvColors.primaryTint, shape: BoxShape.circle),
-                          child: Icon(page.icon, size: 76, color: theme.colorScheme.primary),
+                        Expanded(
+                          flex: 6,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Image.asset(
+                              page.image,
+                              fit: BoxFit.contain,
+                              width: double.infinity,
+                              semanticLabel: page.title.replaceAll('\n', ' '),
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 40),
-                        Text(page.title, style: theme.textTheme.headlineMedium, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        Text(page.body, style: theme.textTheme.bodyLarge?.copyWith(color: ZuruvColors.textSecondary), textAlign: TextAlign.center),
+                        Expanded(
+                          flex: 3,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: SizedBox(
+                                width: 320,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      page.title,
+                                      textAlign: TextAlign.center,
+                                      style: theme.textTheme.headlineMedium
+                                          ?.copyWith(
+                                              color: _ink,
+                                              fontWeight: FontWeight.w800,
+                                              height: 1.2,
+                                              fontSize: 28),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      page.body,
+                                      textAlign: TextAlign.center,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                              color: _muted,
+                                              fontSize: 15,
+                                              height: 1.45),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < _pages.length; i++)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: i == _index ? 24 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: i == _index ? theme.colorScheme.primary : ZuruvColors.border,
-                      borderRadius: BorderRadius.circular(4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var i = 0; i < _pages.length; i++)
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: i == _index ? 24 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: i == _index ? _blue : _blueDot,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _blue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      textStyle: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w600),
+                    ),
+                    onPressed: () {
+                      if (last) {
+                        _finish(next: '/register');
+                      } else {
+                        _controller.nextPage(
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeOut);
+                      }
+                    },
+                    child: Text(last ? 'Get Started' : 'Next'),
                   ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(Gap.page + 4, 28, Gap.page + 4, 24),
-              child: FilledButton(
-                onPressed: () {
-                  if (last) {
-                    _finish(next: '/register');
-                  } else {
-                    _controller.nextPage(duration: const Duration(milliseconds: 280), curve: Curves.easeOut);
-                  }
-                },
-                child: Text(last ? 'Get Started' : 'Next'),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

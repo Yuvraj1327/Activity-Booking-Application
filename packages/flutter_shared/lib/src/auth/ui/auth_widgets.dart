@@ -7,7 +7,7 @@ import '../models.dart';
 import '../providers.dart';
 
 /// Page frame shared by all auth screens.
-class AuthScaffold extends StatelessWidget {
+class AuthScaffold extends ConsumerWidget {
   const AuthScaffold({
     super.key,
     required this.appName,
@@ -24,33 +24,62 @@ class AuthScaffold extends StatelessWidget {
   final bool showBack;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final cfg = ref.watch(authUiConfigProvider);
+    final logo = cfg.logoAsset;
+    final bg = cfg.backgroundAsset;
     return Scaffold(
-      appBar: showBack ? AppBar() : null,
-      body: SafeArea(
-        child: ResponsivePage(
-          maxWidth: 480,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (!showBack) ...[
-                  Text(appName, style: theme.textTheme.headlineMedium?.copyWith(color: theme.colorScheme.primary)),
-                  const SizedBox(height: 24),
-                ],
-                Text(title, style: theme.textTheme.headlineMedium),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 8),
-                  Text(subtitle!, style: theme.textTheme.bodySmall),
-                ],
-                const SizedBox(height: 24),
-                ...children,
-              ],
+      appBar: showBack
+          ? AppBar(backgroundColor: Colors.transparent, elevation: 0)
+          : null,
+      extendBodyBehindAppBar: bg != null && showBack,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (bg != null)
+            Image.asset(bg,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                excludeFromSemantics: true),
+          SafeArea(
+            child: ResponsivePage(
+              maxWidth: 480,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!showBack) ...[
+                      if (bg != null)
+                        // The background artwork already carries the ZURUV logo; centered at the top; keep clear of it.
+                        SizedBox(
+                            height: MediaQuery.sizeOf(context).height * 0.12)
+                      else if (logo != null)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Image.asset(logo,
+                              height: 96, semanticLabel: appName),
+                        )
+                      else
+                        Text(appName,
+                            style: theme.textTheme.headlineMedium
+                                ?.copyWith(color: theme.colorScheme.primary)),
+                      const SizedBox(height: 24),
+                    ],
+                    Text(title, style: theme.textTheme.headlineMedium),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 8),
+                      Text(subtitle!, style: theme.textTheme.bodySmall),
+                    ],
+                    const SizedBox(height: 24),
+                    ...children,
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -73,13 +102,19 @@ class AuthBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
-      child: Text(message, style: Theme.of(context).textTheme.bodyMedium, semanticsLabel: message),
+      child: Text(message,
+          style: Theme.of(context).textTheme.bodyMedium,
+          semanticsLabel: message),
     );
   }
 }
 
 class LoadingButton extends StatelessWidget {
-  const LoadingButton({super.key, required this.label, required this.onPressed, required this.loading});
+  const LoadingButton(
+      {super.key,
+      required this.label,
+      required this.onPressed,
+      required this.loading});
 
   final String label;
   final VoidCallback? onPressed;
@@ -90,14 +125,23 @@ class LoadingButton extends StatelessWidget {
     return FilledButton(
       onPressed: loading ? null : onPressed,
       child: loading
-          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white))
           : Text(label),
     );
   }
 }
 
 class PasswordField extends StatefulWidget {
-  const PasswordField({super.key, required this.controller, this.label = 'Password', this.validator, this.onSubmitted});
+  const PasswordField(
+      {super.key,
+      required this.controller,
+      this.label = 'Password',
+      this.validator,
+      this.onSubmitted});
 
   final TextEditingController controller;
   final String label;
@@ -119,14 +163,18 @@ class _PasswordFieldState extends State<PasswordField> {
       autocorrect: false,
       enableSuggestions: false,
       autofillHints: const [AutofillHints.password],
-      textInputAction: widget.onSubmitted == null ? TextInputAction.next : TextInputAction.done,
+      textInputAction: widget.onSubmitted == null
+          ? TextInputAction.next
+          : TextInputAction.done,
       onFieldSubmitted: widget.onSubmitted,
       validator: widget.validator,
       decoration: InputDecoration(
         labelText: widget.label,
         suffixIcon: IconButton(
           tooltip: _hidden ? 'Show password' : 'Hide password',
-          icon: Icon(_hidden ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+          icon: Icon(_hidden
+              ? Icons.visibility_outlined
+              : Icons.visibility_off_outlined),
           onPressed: () => setState(() => _hidden = !_hidden),
         ),
       ),
@@ -140,7 +188,8 @@ class Validators {
   static final _email = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
   static final _phone = RegExp(r'^\+[1-9][0-9]{6,14}$');
 
-  static String? required(String? v, String what) => (v == null || v.trim().isEmpty) ? 'Enter $what' : null;
+  static String? required(String? v, String what) =>
+      (v == null || v.trim().isEmpty) ? 'Enter $what' : null;
 
   static String? email(String? v) {
     if (v == null || v.trim().isEmpty) return 'Enter your e-mail';
@@ -155,10 +204,11 @@ class Validators {
 
   static String? phone(String? v) {
     if (v == null || v.trim().isEmpty) return 'Enter your phone number';
-    return _phone.hasMatch(v.trim()) ? null : 'Use international format, e.g. +919876543210';
+    return _phone.hasMatch(v.trim())
+        ? null
+        : 'Use international format, e.g. +919876543210';
   }
 }
-
 
 /// "I am a ..." choice shown when creating an account. It only decides which profile is requested
 /// the first time; the role is then read from the API on every sign-in.
@@ -171,11 +221,18 @@ class AccountTypePicker extends ConsumerWidget {
     return SegmentedButton<AppRole>(
       showSelectedIcon: false,
       segments: const [
-        ButtonSegment(value: AppRole.customer, icon: Icon(Icons.sports_tennis_rounded), label: Text('Player')),
-        ButtonSegment(value: AppRole.owner, icon: Icon(Icons.storefront_rounded), label: Text('Venue owner')),
+        ButtonSegment(
+            value: AppRole.customer,
+            icon: Icon(Icons.sports_tennis_rounded),
+            label: Text('Player')),
+        ButtonSegment(
+            value: AppRole.owner,
+            icon: Icon(Icons.storefront_rounded),
+            label: Text('Venue owner')),
       ],
       selected: {selected},
-      onSelectionChanged: (s) => ref.read(signUpRoleProvider.notifier).state = s.first,
+      onSelectionChanged: (s) =>
+          ref.read(signUpRoleProvider.notifier).state = s.first,
     );
   }
 }

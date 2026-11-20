@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../core/settings/settings_routes.dart';
 import 'features/analytics/analytics_screen.dart';
 import 'features/bookings/booking_details_screen.dart';
 import 'features/bookings/bookings_screen.dart';
@@ -10,8 +11,6 @@ import 'features/notifications/notifications_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/profile/business_info_screen.dart';
 import 'features/profile/edit_profile_screen.dart';
-import 'features/profile/info_pages.dart';
-import 'features/profile/notification_prefs_screen.dart';
 import 'features/profile/payout_settings_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/reviews/reviews_screen.dart';
@@ -55,7 +54,5 @@ List<RouteBase> ownerRoutes() => [
       GoRoute(path: '/owner/profile/edit', builder: (_, __) => const EditProfileScreen()),
       GoRoute(path: '/owner/profile/business', builder: (_, __) => const BusinessInfoScreen()),
       GoRoute(path: '/owner/profile/payout', builder: (_, __) => const PayoutSettingsScreen()),
-      GoRoute(path: '/owner/profile/notifications', builder: (_, __) => const NotificationPrefsScreen()),
-      GoRoute(path: '/owner/profile/help', builder: (_, __) => const HelpScreen()),
-      GoRoute(path: '/owner/profile/terms', builder: (_, __) => const TermsScreen()),
+      ...settingsRoutes('/owner/settings'),
     ];

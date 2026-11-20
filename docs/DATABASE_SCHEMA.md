@@ -106,7 +106,7 @@ erDiagram
 | `payments` | One Razorpay order/payment per booking (**Step 7**, migration `0007`) | `UNIQUE(booking_id)`, `UNIQUE(provider, provider_order_id)`, partial `UNIQUE(provider, provider_payment_id)`; status CHECK (created, pending, authorized, captured, failed, refunded, partially_refunded); `amount_paise > 0`; captured ⇒ payment id present; `review_required` ⇒ reason; no card data |
 | `payment_events` | Append-only record of every gateway signal (**Step 7**) | Partial `UNIQUE(provider_event_id)` = webhook idempotency; update trigger blocks edits; outcome applied/duplicate/ignored/rejected; sanitised `detail` |
 | `user_device_tokens` | FCM tokens (**Step 7**) | `UNIQUE(token)`; platform android/ios/web; app customer/owner/admin; no client grant |
-| `notification_preferences` | `push_enabled`, `email_enabled` per user (**Step 7**) | PK `user_id`; own row readable |
+| `notification_preferences` | `push_enabled`, `email_enabled` per user (**Step 7**); `booking_enabled`, `payment_enabled`, `promo_enabled` (**Settings**, rev 0010) | PK `user_id`; own row readable |
 | `email_deliveries` | Email queue and delivery log (**Step 7**) | `UNIQUE(dedupe_key)`; status queued/sent/failed/skipped; non-secret `context`; no client grant |
 | `audit_logs` | Append-only trail | Update/delete blocked by trigger (only the FK nulling `actor_id` is allowed); `actor_role` ∈ customer/owner/admin/system |
 
@@ -146,3 +146,15 @@ Refunds, ledger, payouts (no approved policy: Q9, Q10), reviews. Added by the st
 ## SQL Editor package (`supabase/`)
 
 `supabase/migrations/001…010_*.sql` plus `supabase/seed.sql` build this same schema (Alembic head `0009`) without Alembic, for the Supabase SQL Editor. Alembic stays the source of truth; `supabase/verify_sync.sh` proves the two are identical. Instructions: `supabase/README.md`.
+
+
+## Settings additions (revision 0010 / `supabase/migrations/011_settings.sql`)
+
+No existing table was duplicated; existing tables were extended:
+
+| Table | Change |
+|---|---|
+| `profiles` | `language` (`en`/`hi`, default `en`), `deletion_requested_at` (set while an account-deletion request is open) |
+| `customer_profiles` | `preferred_category_ids uuid[]` (sports interests, max 20, validated against `categories` by the API) |
+| `notification_preferences` | `booking_enabled`, `payment_enabled`, `promo_enabled` (default true) |
+| `support_tickets` (**new**, the only new table) | `user_id`, `kind` (`support`/`feedback`/`issue`), `subject`, `message`, `app_version`, `platform`, `status` (`open`/`closed`); RLS on, all client grants revoked (API only) |

@@ -1,6 +1,7 @@
 import "server-only";
 import { env } from "@/lib/env";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { cache } from "react";
+import { getVerifiedSession } from "@/lib/session";
 
 export type AdminProfile = { id: string; full_name: string; email: string | null; role: "admin" };
 
@@ -20,15 +21,11 @@ export type AdminAccess =
  * 2. The ZURUV API (`GET /admin/me`) checks, from the database, that the account exists, is
  *    active, has role "admin" and (when enabled) completed MFA. The browser cannot influence this.
  */
-export async function getAdminAccess(): Promise<AdminAccess> {
-  const supabase = await getServerSupabase();
-  if (!supabase) return { kind: "not_configured" };
-
-  const { data: userData, error } = await supabase.auth.getUser();
-  if (error || !userData.user) return { kind: "signed_out" };
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
-  if (!token) return { kind: "signed_out" };
+export const getAdminAccess = cache(async (): Promise<AdminAccess> => {
+  const session = await getVerifiedSession();
+  if (session.kind === "not_configured") return { kind: "not_configured" };
+  if (session.kind !== "ok") return { kind: "signed_out" };
+  const token = session.token;
 
   let res: Response;
   try {
@@ -47,4 +44,4 @@ export async function getAdminAccess(): Promise<AdminAccess> {
   if (res.status === 403 && code === "MFA_REQUIRED") return { kind: "mfa_required" };
   if (res.status === 403) return { kind: "forbidden", code };
   return { kind: "error", message: "The ZURUV API returned an unexpected error." };
-}
+});

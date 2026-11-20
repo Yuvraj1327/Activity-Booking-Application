@@ -90,11 +90,14 @@ class AuthController extends Notifier<AppAuthState> {
 
   Future<void> _handleMissingProfile(MeResponse me) async {
     final meta = _gateway.userMetadata;
-    final name = (meta['full_name'] as String?)?.trim();
+    final social = _isSocialSignUp;
+    final name = ((meta['full_name'] ?? meta['name']) as String?)?.trim();
     final business = (meta['business_name'] as String?)?.trim();
     // Registered through this app: the chosen account type travelled in the sign-up metadata.
     // Only customer/owner can be requested; anything else falls back to customer (the API rejects admin).
-    final requested = AppRole.parse(meta['requested_role'] as String?);
+    // Social (Google) sign-ups are ALWAYS customers: user_metadata is user-editable and the provider
+    // is not a vetted business, so Owner can only come from e-mail sign-up (or an admin).
+    final requested = social ? AppRole.customer : AppRole.parse(meta['requested_role'] as String?);
     final role = requested == AppRole.owner ? AppRole.owner : AppRole.customer;
     final complete = name != null &&
         name.isNotEmpty &&
@@ -120,6 +123,11 @@ class AuthController extends Notifier<AppAuthState> {
     }
     state = NeedsProfile(email: me.email, prefillName: name, prefillBusinessName: business);
   }
+
+  bool get _isSocialSignUp => _gateway.authProvider == 'google';
+
+  /// True when the account type is fixed to customer (shown by the profile form).
+  bool get isSocialSignUp => _isSocialSignUp;
 
   Future<void> resolveAfterConflict() async {
     _resolving = false;
@@ -164,9 +172,9 @@ class AuthController extends Notifier<AppAuthState> {
     final current = state;
     try {
       final profile = await _gateway.createProfile(CreateProfileRequest(
-        role: role == AppRole.owner ? AppRole.owner : AppRole.customer,
+        role: !_isSocialSignUp && role == AppRole.owner ? AppRole.owner : AppRole.customer,
         fullName: fullName,
-        businessName: role == AppRole.owner ? businessName : null,
+        businessName: !_isSocialSignUp && role == AppRole.owner ? businessName : null,
       ));
       await _handleProfile(profile);
     } on ApiException catch (e) {
@@ -187,6 +195,29 @@ class AuthController extends Notifier<AppAuthState> {
   void setProfile(UserProfile profile) {
     if (state is Authenticated) state = Authenticated(profile);
   }
+
+  /// Changes the password of the signed-in user. The current password is checked first by signing
+  /// in again with it, so a borrowed unlocked phone cannot silently take over the account.
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+    final s = state;
+    final email = s is Authenticated ? s.profile.email : null;
+    if (email == null || email.isEmpty) {
+      throw const AuthActionException('Your account has no e-mail address to verify with.');
+    }
+    await _gateway.signIn(email: email, password: currentPassword);
+    await _gateway.updatePassword(newPassword);
+  }
+
+  /// Signs out this device AND every other device the account is signed in on.
+  Future<void> signOutEverywhere() async {
+    try {
+      await ref.read(beforeSignOutProvider)();
+    } catch (_) {}
+    await _gateway.signOutEverywhere();
+    state = const Unauthenticated();
+  }
+
+  DateTime? get sessionStartedAt => _gateway.sessionStartedAt;
 
   Future<void> signOut() async {
     // Stop pushes for this account on this phone BEFORE the session (and its token) goes away.

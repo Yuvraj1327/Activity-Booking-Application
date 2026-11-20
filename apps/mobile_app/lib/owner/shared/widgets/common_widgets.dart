@@ -43,7 +43,7 @@ class EmptyState extends StatelessWidget {
             Container(
               width: 84,
               height: 84,
-              decoration: const BoxDecoration(color: ZuruvColors.primaryTint, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
               child: Icon(icon, size: 38, color: theme.colorScheme.primary),
             ),
             const SizedBox(height: 18),
@@ -76,9 +76,9 @@ class UnavailableCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(Gap.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(Radii.card),
-        border: Border.all(color: ZuruvColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,7 +115,7 @@ class StatTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(Gap.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(Radii.card),
         boxShadow: Shadows.card,
       ),
@@ -125,7 +125,7 @@ class StatTile extends StatelessWidget {
           Row(children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: ZuruvColors.primaryTint, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(10)),
               child: Icon(icon, size: 18, color: theme.colorScheme.primary),
             ),
             const SizedBox(width: 8),

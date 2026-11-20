@@ -53,6 +53,7 @@ class ProfileScreen extends ConsumerWidget {
             onTap: () => showCitySheet(context),
           ),
           _Tile(icon: Icons.notifications_none_rounded, label: 'Notifications', onTap: () => context.push('/notifications')),
+          _Tile(icon: Icons.settings_outlined, label: 'Settings', onTap: () => context.push('/settings')),
           const Divider(),
           _Tile(
             icon: Icons.logout_rounded,
@@ -92,7 +93,7 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = destructive ? ZuruvColors.error : ZuruvColors.text;
+    final color = destructive ? ZuruvColors.error : Theme.of(context).colorScheme.onSurface;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: destructive ? color : Theme.of(context).colorScheme.primary),

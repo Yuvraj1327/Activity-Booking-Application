@@ -1,5 +1,5 @@
 import {
-  BarChart3, Bell, CalendarCheck, CreditCard, LayoutDashboard, MapPin, ScrollText, Store, Users,
+  BarChart3, Bell, CalendarCheck, CreditCard, LayoutDashboard, MapPin, ScrollText, Settings, Store, Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,3 +26,6 @@ export const navGroups: NavGroup[] = [
   ] },
 ];
 export const navItems: NavItem[] = navGroups.flatMap((g) => g.items);
+
+/** Pinned to the bottom of the sidebar. */
+export const settingsItem: NavItem = { label: "Settings", href: "/settings", icon: Settings };

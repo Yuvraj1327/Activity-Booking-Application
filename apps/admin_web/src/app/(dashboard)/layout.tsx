@@ -8,7 +8,12 @@ import { getAdminAccess } from "@/lib/admin-access";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const access = await getAdminAccess();
+  // Independent calls run together; both reuse the single verified session of this request.
+  const [access, unread] = await Promise.all([
+    getAdminAccess(),
+    // The bell is a convenience: if the count cannot be read the console still works.
+    safe(adminGet<{ unread_count: number }>("/notifications/unread-count")),
+  ]);
   switch (access.kind) {
     case "ok":
       break;
@@ -22,9 +27,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
     case "error":
       throw new Error(access.message);
   }
-
-  // The bell is a convenience: if the count cannot be read the console still works.
-  const unread = await safe(adminGet<{ unread_count: number }>("/notifications/unread-count"));
 
   return (
     <div className="flex min-h-screen">

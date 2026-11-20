@@ -8,57 +8,79 @@ import 'package:zuruv/core/storage/preferences.dart';
 import 'helpers.dart';
 
 void main() {
-  testWidgets('first launch: splash, then onboarding, then login', (tester) async {
+  testWidgets('first launch: splash, then onboarding, then login',
+      (tester) async {
     final env = TestEnv(gateway: FakeAuthGateway());
     await tester.pumpWidget(await env.app(prefs: {}));
     await tester.pump();
-    expect(find.text('Discover. Book. Play.'), findsOneWidget); // splash tagline
+    expect(
+        find.text('Discover. Book. Play.'), findsOneWidget); // splash tagline
 
     await tester.pump(const Duration(milliseconds: 1800));
     await tester.pumpAndSettle();
-    expect(find.text('Discover venues near you'), findsOneWidget);
+    expect(find.text('Discover venues\nnear you'), findsOneWidget);
 
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
     expect(find.text('Welcome back'), findsOneWidget);
   });
 
-  testWidgets('onboarding: Next, Next, Get Started opens registration and is remembered', (tester) async {
+  testWidgets(
+      'onboarding: Next x3, Get Started opens registration and is remembered',
+      (tester) async {
     final env = TestEnv(gateway: FakeAuthGateway());
     await env.pump(tester, prefs: {});
-    await tester.tap(find.text('Next'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Next'));
-    await tester.pumpAndSettle();
-    expect(find.text('Book in a few taps'), findsOneWidget);
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('Play, book\nand repeat'), findsOneWidget);
     await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();
     expect(find.text('Create account'), findsWidgets);
   });
 
-  testWidgets('returning signed-out user goes straight to login', (tester) async {
+  testWidgets('returning signed-out user goes straight to login',
+      (tester) async {
     await TestEnv(gateway: FakeAuthGateway()).pump(tester);
     expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Discover venues near you'), findsNothing);
+    expect(find.text('Discover venues\nnear you'), findsNothing);
   });
 
-  testWidgets('protected routes: a signed-out user cannot reach the app', (tester) async {
+  testWidgets('protected routes: a signed-out user cannot reach the app',
+      (tester) async {
     await TestEnv(gateway: FakeAuthGateway()).pump(tester);
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('restored customer session lands on Home with the bottom navigation', (tester) async {
+  testWidgets(
+      'restored customer session lands on Home with the bottom navigation',
+      (tester) async {
     await TestEnv().pump(tester);
     expect(find.textContaining('Hi Asha'), findsOneWidget);
-    for (final label in ['Home', 'Explore', 'Bookings', 'Favorites', 'Profile']) {
+    for (final label in [
+      'Home',
+      'Explore',
+      'Bookings',
+      'Favorites',
+      'Profile'
+    ]) {
       expect(inNavBar(label), findsOneWidget);
     }
   });
 
-  testWidgets('a customer lands on the Customer Dashboard, never the owner area', (tester) async {
+  testWidgets(
+      'a customer lands on the Customer Dashboard, never the owner area',
+      (tester) async {
     await TestEnv().pump(tester);
     expect(find.text('Popular venues'), findsOneWidget);
-    for (final label in ['Home', 'Explore', 'Bookings', 'Favorites', 'Profile']) {
+    for (final label in [
+      'Home',
+      'Explore',
+      'Bookings',
+      'Favorites',
+      'Profile'
+    ]) {
       expect(inNavBar(label), findsOneWidget);
     }
     // Typing an owner address (or following an old link) cannot open the owner area.
@@ -69,8 +91,12 @@ void main() {
     expect(find.text('Dashboard'), findsNothing);
   });
 
-  testWidgets('an admin account is turned away: admins use the website', (tester) async {
-    await TestEnv(gateway: FakeAuthGateway(hasSession: true, me: meWith(AppRole.admin))).pump(tester);
+  testWidgets('an admin account is turned away: admins use the website',
+      (tester) async {
+    await TestEnv(
+            gateway:
+                FakeAuthGateway(hasSession: true, me: meWith(AppRole.admin)))
+        .pump(tester);
     expect(find.byType(NavigationBar), findsNothing);
     expect(find.textContaining('admin website'), findsWidgets);
   });

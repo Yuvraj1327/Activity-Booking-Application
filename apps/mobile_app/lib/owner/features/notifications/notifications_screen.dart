@@ -117,7 +117,7 @@ class _Tile extends ConsumerWidget {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 4),
       leading: CircleAvatar(
-        backgroundColor: ZuruvColors.primaryTint,
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         child: Icon(iconForNotification(n.type), color: Theme.of(context).colorScheme.primary, size: 20),
       ),
       title: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800)),

@@ -226,7 +226,7 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
                         },
                       ),
                 filled: true,
-                fillColor: ZuruvColors.primaryTint,
+                fillColor: Theme.of(context).colorScheme.primaryContainer,
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.button), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.button), borderSide: BorderSide.none),

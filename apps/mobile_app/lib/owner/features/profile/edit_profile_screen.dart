@@ -28,6 +28,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   Uint8List? _pickedBytes;
   String? _pickedExt;
+  bool _removePhoto = false;
   bool _saving = false;
   String? _error;
 
@@ -57,6 +58,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       setState(() {
         _pickedBytes = bytes;
         _pickedExt = ext;
+        _removePhoto = false;
         _error = null;
       });
     } catch (_) {
@@ -72,6 +74,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (name != _original.fullName) 'full_name': name,
       if (phone != (_original.phone ?? '')) 'phone': phone.isEmpty ? null : phone,
     };
+    final removing = _removePhoto && _pickedBytes == null && _original.avatarPath != null;
+    if (removing) changes['avatar_path'] = null;
     if (changes.isEmpty && _pickedBytes == null) {
       context.pop();
       return;
@@ -89,7 +93,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       }
       final updated = await ref.read(ownerRepositoryProvider).updateProfile(changes);
       ref.read(authControllerProvider.notifier).setProfile(updated);
-      if (uploaded != null && _original.avatarPath != null) await avatars.delete(_original.avatarPath!);
+      if ((uploaded != null || removing) && _original.avatarPath != null) await avatars.delete(_original.avatarPath!);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
       context.pop();
@@ -125,7 +129,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       children: [
                         AvatarView(
                           name: _name.text,
-                          path: _original.avatarPath,
+                          path: _removePhoto ? null : _original.avatarPath,
                           radius: 52,
                           localBytes: _pickedBytes == null ? null : MemoryImage(_pickedBytes!),
                         ),
@@ -145,7 +149,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  if (_pickedBytes != null || (_original.avatarPath != null && !_removePhoto))
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: _saving
+                            ? null
+                            : () => setState(() {
+                                  _pickedBytes = null;
+                                  _pickedExt = null;
+                                  _removePhoto = _original.avatarPath != null;
+                                }),
+                        icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                        label: const Text('Remove photo'),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
                   if (_error != null) ...[AuthBanner(message: _error!), const SizedBox(height: 16)],
                   TextFormField(
                     controller: _name,

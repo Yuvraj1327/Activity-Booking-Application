@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 Phone = Annotated[str, StringConstraints(pattern=r"^\+[1-9][0-9]{6,14}$")]
 PersonName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
@@ -12,6 +12,7 @@ Email = Annotated[
 ]
 Address = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 
+Language = Literal["en", "hi"]
 Role = Literal["customer", "owner", "admin"]
 SelfServiceRole = Literal["customer", "owner"]  # "admin" can never be requested through the API
 
@@ -47,6 +48,8 @@ class ProfileOut(BaseModel):
     email: str | None
     phone: str | None
     avatar_path: str | None
+    language: Language
+    deletion_requested_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -72,9 +75,10 @@ class ProfileCreate(StrictModel):
 
 
 class ProfileUpdate(NonNullableUpdate):
-    _non_nullable = ("full_name",)
+    _non_nullable = ("full_name", "language")
 
     full_name: PersonName | None = None
+    language: Language | None = None
     phone: Phone | None = None
     avatar_path: Annotated[str, StringConstraints(min_length=1, max_length=300)] | None = None
 
@@ -92,10 +96,14 @@ class MeResponse(BaseModel):
 class CustomerMe(BaseModel):
     profile: ProfileOut
     preferred_city_id: UUID | None
+    preferred_category_ids: list[UUID] = []
 
 
 class CustomerUpdate(NonNullableUpdate):
+    _non_nullable = ("preferred_category_ids",)
+
     preferred_city_id: UUID | None = None
+    preferred_category_ids: Annotated[list[UUID], Field(max_length=20)] | None = None
 
 
 class OwnerMe(BaseModel):
@@ -113,3 +121,24 @@ class OwnerUpdate(NonNullableUpdate):
     business_phone: Phone | None = None
     business_email: Email | None = None
     business_address: Address | None = None
+
+
+SupportKind = Literal["support", "feedback", "issue"]
+
+
+class SupportTicketCreate(StrictModel):
+    kind: SupportKind
+    subject: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=120)]
+    message: Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=2000)]
+    app_version: Annotated[str, StringConstraints(strip_whitespace=True, max_length=40)] | None = None
+    platform: Literal["android", "ios", "web", "other"] | None = None
+
+
+class SupportTicketOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    kind: SupportKind
+    subject: str
+    status: Literal["open", "closed"]
+    created_at: datetime

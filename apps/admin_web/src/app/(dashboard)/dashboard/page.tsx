@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarCheck, CalendarClock, CalendarX2, CreditCard, MapPin, Store, Users, Wallet } from "lucide-react";
+import { ArrowRight, CalendarCheck, CalendarClock, CalendarX2, CreditCard, MapPin, Store, Users, Wallet } from "lucide-react";
 import { BriefBookings } from "@/components/data/booking-table";
 import { DateRangeFilter } from "@/components/data/date-range-filter";
 import { MoneyPanel } from "@/components/data/money-panel";
-import { PageHeader } from "@/components/data/page-header";
+import { DashboardHero } from "@/components/dashboard/hero";
 import { StatCard } from "@/components/data/stat-card";
 import { EmptyState, ErrorState } from "@/components/data/states";
 import { TrendChart } from "@/components/charts/charts";
@@ -24,7 +24,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="mx-auto max-w-7xl">
-      <PageHeader title="Dashboard" description="Live platform figures from the ZURUV database." />
+      <h2 className="sr-only">Dashboard</h2>
+      <div className="mb-6"><DashboardHero /></div>
       <div className="mb-6"><DateRangeFilter path="/dashboard" params={params} range={range} /></div>
       {!res.ok ? <ErrorState message={`Could not load the dashboard (${res.error.message}).`} /> : <Body d={res.data} />}
     </div>
@@ -39,14 +40,14 @@ function Body({ d }: { d: Dashboard }) {
   const p = d.period;
   return (
     <div className="space-y-6">
-      <section aria-label="Platform totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Platform totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Customers" value={formatNumber(t.customers)} hint={`${formatNumber(p.new_customers)} new in period`} icon={Users} />
         <StatCard label="Venue owners" value={formatNumber(t.owners)} hint={`${formatNumber(p.new_owners)} new in period`} icon={Store} />
         <StatCard label="Venues" value={formatNumber(t.venues)} hint={`${formatNumber(t.published_venues)} published`} icon={MapPin} />
-        <StatCard label="Payment transactions" value={formatNumber(t.payments)} hint={`${formatNumber(p.transactions)} in period`} icon={CreditCard} />
+        <StatCard label="Bookings" value={formatNumber(p.bookings)} hint={`${formatNumber(t.bookings)} all time`} icon={CalendarCheck} trend={bookingData.map((r) => r.Bookings)} />
+        <StatCard label="Payments" value={formatMoney(p.money.successful_payment_paise)} hint={`${formatNumber(p.transactions)} transactions in period`} icon={CreditCard} trend={payData.map((r) => r.Captured)} />
       </section>
-      <section aria-label="Bookings in period" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Bookings (period)" value={formatNumber(p.bookings)} hint={`${formatNumber(t.bookings)} all time`} icon={CalendarCheck} />
+      <section aria-label="Booking status in period" className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Confirmed" value={formatNumber(p.confirmed)} icon={CalendarCheck} tone="success" />
         <StatCard label="Pending payment" value={formatNumber(p.pending)} icon={CalendarClock} tone="warning" />
         <StatCard label="Cancelled" value={formatNumber(p.cancelled)} icon={CalendarX2} tone="danger" />
@@ -54,11 +55,11 @@ function Body({ d }: { d: Dashboard }) {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle>Booking trend</CardTitle><CardDescription>Bookings created per {d.booking_trend.length > 62 ? "week" : "day"}</CardDescription></CardHeader>
+          <CardHeader className="flex-row items-start justify-between gap-3"><div className="flex flex-col gap-1"><CardTitle>Booking trend</CardTitle><CardDescription>Bookings created per {d.booking_trend.length > 62 ? "week" : "day"}</CardDescription></div><p className="text-xl font-semibold tracking-tight">{formatNumber(p.bookings)}</p></CardHeader>
           <CardContent><TrendChart title="Booking trend" data={bookingData} series={[{ key: "Bookings", label: "Bookings" }, { key: "Confirmed", label: "Confirmed", color: 3 }]} /></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Recorded payment trend</CardTitle><CardDescription>Captured payments, gross (not revenue)</CardDescription></CardHeader>
+          <CardHeader className="flex-row items-start justify-between gap-3"><div className="flex flex-col gap-1"><CardTitle>Recorded payment trend</CardTitle><CardDescription>Captured payments, gross (not revenue)</CardDescription></div><p className="text-xl font-semibold tracking-tight">{formatMoney(p.money.successful_payment_paise)}</p></CardHeader>
           <CardContent><TrendChart title="Payment trend" data={payData} series={[{ key: "Captured", label: "Captured" }]} valueFormat="money" kind="bar" /></CardContent>
         </Card>
       </section>
@@ -66,7 +67,7 @@ function Body({ d }: { d: Dashboard }) {
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2"><MoneyPanel money={p.money} /></div>
         <Card>
-          <CardHeader><CardTitle>Popular venues</CardTitle><CardDescription>Most booked in this period</CardDescription></CardHeader>
+          <CardHeader className="flex-row items-start justify-between gap-3"><div className="flex flex-col gap-1"><CardTitle>Popular venues</CardTitle><CardDescription>Most booked in this period</CardDescription></div><Link href="/venues" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">View all <ArrowRight className="size-4" aria-hidden /></Link></CardHeader>
           <CardContent>
             {d.popular_venues.length === 0 ? <EmptyState title="No bookings in this period" /> : (
               <ol className="space-y-3">
@@ -84,7 +85,7 @@ function Body({ d }: { d: Dashboard }) {
       </section>
 
       <Card>
-        <CardHeader><CardTitle>Recent bookings</CardTitle></CardHeader>
+        <CardHeader className="flex-row items-center justify-between"><CardTitle>Recent bookings</CardTitle><Link href="/bookings" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">View all <ArrowRight className="size-4" aria-hidden /></Link></CardHeader>
         <CardContent className="p-0">
           {d.recent_bookings.length === 0 ? <EmptyState title="No bookings yet" description="Bookings appear here as customers book venues." /> : <BriefBookings items={d.recent_bookings} />}
         </CardContent>

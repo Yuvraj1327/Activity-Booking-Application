@@ -31,8 +31,9 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const { data } = await supabase.auth.getUser();
-  if (!data.user && !isPublic) {
+  // Verifies the JWT locally (no Auth round trip on every click) and refreshes the cookies if needed.
+  const { data } = await supabase.auth.getClaims();
+  if (!data?.claims && !isPublic) {
     const redirect = NextResponse.redirect(new URL("/login", request.url));
     response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
     return redirect;

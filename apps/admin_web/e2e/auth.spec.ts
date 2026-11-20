@@ -48,7 +48,9 @@ test.describe("admin authentication and authorisation", () => {
     await signIn(page, ADMIN.email, ADMIN.password);
     await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await page.getByRole("button", { name: "Sign out" }).click(); // first click only asks to confirm
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.getByRole("button", { name: "Confirm sign out?" }).click();
     await expect(page).toHaveURL(/\/login$/);
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/login$/);

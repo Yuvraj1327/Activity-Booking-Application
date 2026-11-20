@@ -173,3 +173,18 @@ Step 1 proposed `GET /v1/me`, `POST /v1/auth/register/customer|owner`, `GET|PATC
 `python -m scripts.create_admin --email … --name …` (from `backend/`, with `DATABASE_URL`). Promotes an existing Supabase user to admin. Needs no service-role key.
 
 - **Step 6:** availability is `GET /venues/{id}/availability` (+ `/availability/dates`); the `/slots` alias is not provided because it would return the same data. Owner schedule editing stays `PUT /owners/venues/{id}/schedules` (replace semantics, D-52) instead of separate `POST/PATCH special-schedules`. Added, not in the brief: `POST /bookings/quote`, `GET /bookings/{id}/cancellation-preview`, courts and blocks routes, `GET /admin/bookings…`. Booking-code format and the status list are proposals pending Q11.
+
+
+## Settings endpoints (mobile app, both roles)
+
+| Method + path | Role | Purpose |
+|---|---|---|
+| `GET/PUT /notifications/preferences` | any | `push_enabled`, `email_enabled`, `booking_enabled`, `payment_enabled`, `promo_enabled`. The server skips push **and** e-mail for a type whose switch is off (`booking.*`, `payment.*`, `promo.*`); the in-app copy is always kept. |
+| `PATCH /profiles/me` | any | now also accepts `language` (`en`/`hi`); `avatar_path: null` removes the photo |
+| `POST /profiles/me/deletion-request` | any | records `deletion_requested_at` (idempotent). Nothing is deleted; an administrator processes the request. |
+| `DELETE /profiles/me/deletion-request` | any | cancels the request |
+| `GET/PATCH /customers/me` | customer | `preferred_category_ids` (unknown category -> 422 `INVALID_CATEGORY`; duplicates removed) |
+| `POST /support/tickets` | any | `{kind, subject(3-120), message(10-2000), app_version?, platform?}`; max 5 per hour per user (409 `RATE_LIMITED`) |
+| `GET /support/tickets` | any | the caller's own messages only |
+
+Password change, session listing/sign-out-everywhere and e-mail are handled by Supabase Auth directly from the app.

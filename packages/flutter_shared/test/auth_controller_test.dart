@@ -19,6 +19,7 @@ MeResponse meWith(AppRole role, {String status = 'active'}) => MeResponse(
 Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 20));
 
 void main() {
+  googleTests();
   test('no stored session -> unauthenticated, API never called', () {
     final g = FakeAuthGateway();
     final c = containerFor(g);
@@ -171,5 +172,80 @@ void main() {
       expect(authRedirect(const AccountSuspended(), '/'), '/suspended');
       expect(authRedirect(const PasswordRecovery(), '/login'), '/reset-password');
     });
+  });
+}
+
+void googleTests() {
+  final noProfile = MeResponse(userId: 'u1', hasProfile: false, profile: null);
+
+  test('Google sign-up auto-creates a CUSTOMER profile from the Google name', () async {
+    final g = FakeAuthGateway(
+      hasSession: true,
+      authProvider: 'google',
+      me: noProfile,
+      metadata: {'name': 'Asha Rao'},
+    );
+    final c = containerFor(g);
+    await settle();
+    expect(g.lastCreateRequest!.role, AppRole.customer);
+    expect(g.lastCreateRequest!.fullName, 'Asha Rao');
+    expect(c.read(authControllerProvider), isA<Authenticated>());
+  });
+
+  test('Google sign-up can never become an owner, even if metadata asks for it', () async {
+    final g = FakeAuthGateway(
+      hasSession: true,
+      authProvider: 'google',
+      me: noProfile,
+      metadata: {'full_name': 'Eve', 'requested_role': 'owner', 'business_name': 'Evil Co'},
+    );
+    final c = containerFor(g);
+    await settle();
+    expect(g.lastCreateRequest!.role, AppRole.customer);
+    expect(g.lastCreateRequest!.businessName, isNull);
+    await c.read(authControllerProvider.notifier).completeProfile(
+          role: AppRole.owner,
+          fullName: 'Eve',
+          businessName: 'Evil Co',
+        );
+    expect(g.lastCreateRequest!.role, AppRole.customer);
+    expect(g.lastCreateRequest!.businessName, isNull);
+  });
+
+  test('e-mail sign-up can still register an owner (unchanged)', () async {
+    final g = FakeAuthGateway(
+      hasSession: true,
+      authProvider: 'email',
+      me: noProfile,
+      metadata: {'full_name': 'Ravi', 'requested_role': 'owner', 'business_name': 'Smash Arena'},
+    );
+    containerFor(g);
+    await settle();
+    expect(g.lastCreateRequest!.role, AppRole.owner);
+  });
+
+  test('an existing owner signing in with Google keeps the owner role', () async {
+    final g = FakeAuthGateway(hasSession: true, authProvider: 'google', me: meWith(AppRole.owner));
+    final c = containerFor(g);
+    await settle();
+    expect((c.read(authControllerProvider) as Authenticated).profile.role, AppRole.owner);
+    expect(g.calls, isNot(contains('createProfile')));
+  });
+
+  test('an existing admin signing in with Google is turned away', () async {
+    final g = FakeAuthGateway(hasSession: true, authProvider: 'google', me: meWith(AppRole.admin));
+    final c = containerFor(g);
+    await settle();
+    expect(c.read(authControllerProvider), isA<Unauthenticated>());
+  });
+
+  test('cancelling Google sign-in surfaces as AuthCancelledException and changes nothing', () async {
+    final g = FakeAuthGateway()..oauthError = const AuthCancelledException();
+    final c = containerFor(g);
+    await expectLater(
+      c.read(authControllerProvider.notifier).signInWithOAuth(OAuthKind.google),
+      throwsA(isA<AuthCancelledException>()),
+    );
+    expect(c.read(authControllerProvider), isA<Unauthenticated>());
   });
 }

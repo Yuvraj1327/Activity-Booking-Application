@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zuruv/app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zuruv/core/config/app_config.dart';
+import 'package:zuruv/core/settings/settings_repository.dart';
 import 'package:zuruv/core/storage/preferences.dart';
+import '../settings_fakes.dart';
 import 'package:zuruv/owner/features/profile/avatar_service.dart';
 import 'package:zuruv/owner/features/venue_form/venue_form_screen.dart';
 import 'package:zuruv/owner/shared/models/models.dart';
@@ -438,14 +440,16 @@ MeResponse meWith(AppRole role, {String name = 'Asha'}) => MeResponse(
     );
 
 class TestEnv {
-  TestEnv({FakeAuthGateway? gateway, FakeOwnerRepository? repo, FakePhotoPicker? picker})
-      : gateway = gateway ?? FakeAuthGateway(hasSession: true, me: meWith(AppRole.owner)),
+  TestEnv({FakeAuthGateway? gateway, FakeOwnerRepository? repo, FakePhotoPicker? picker, FakeSettingsRepository? settings})
+      : settings = settings ?? FakeSettingsRepository(),
+        gateway = gateway ?? FakeAuthGateway(hasSession: true, me: meWith(AppRole.owner)),
         repo = repo ?? FakeOwnerRepository(),
         picker = picker ?? FakePhotoPicker(null);
 
   final FakeAuthGateway gateway;
   final FakeOwnerRepository repo;
   final FakePhotoPicker picker;
+  final FakeSettingsRepository settings;
 
   Future<Widget> app({Map<String, Object> prefs = const {PrefKeys.onboardingDone: true, PrefKeys.ownerOnboardingDone: true}}) async {
     SharedPreferences.setMockInitialValues(prefs);
@@ -457,6 +461,7 @@ class TestEnv {
         ownerRepositoryProvider.overrideWithValue(repo),
         avatarServiceProvider.overrideWithValue(FakeAvatarService()),
         photoPickerProvider.overrideWithValue(picker),
+        settingsRepositoryProvider.overrideWithValue(settings..profile = gateway.me?.profile),
       ],
       child: const ZuruvApp(),
     );

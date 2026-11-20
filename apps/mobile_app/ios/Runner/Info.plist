@@ -59,6 +59,13 @@
 				<string>io.zuruv.app</string>
 			</array>
 		</dict>
+		<dict>
+			<!-- Google Sign-In callback: the REVERSED iOS client id, synced from .env by tool/sync_native_keys.sh -->
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_IOS_REVERSED_CLIENT_ID)</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>

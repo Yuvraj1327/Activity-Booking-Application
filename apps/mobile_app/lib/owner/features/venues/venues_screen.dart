@@ -271,7 +271,7 @@ class VenueCard extends StatelessWidget {
       onTap: () => context.push('/owner/venues/${venue.id}'),
       child: Container(
         padding: const EdgeInsets.all(Gap.md),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(Radii.card), boxShadow: Shadows.card),
+        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(Radii.card), boxShadow: Shadows.card),
         child: Row(
           children: [
             SizedBox(width: 96, height: 96, child: ZNetworkImage(url: venue.coverImageUrl, borderRadius: 14, semanticLabel: venue.name)),

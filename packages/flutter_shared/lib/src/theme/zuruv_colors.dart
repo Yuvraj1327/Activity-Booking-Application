@@ -18,4 +18,13 @@ class ZuruvColors {
   static const Color border = Color(0xFFE4E4EC);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color background = Color(0xFFFFFFFF);
+
+  // Dark appearance
+  static const Color darkBackground = Color(0xFF0F1117);
+  static const Color darkSurface = Color(0xFF181B23);
+  static const Color darkBorder = Color(0xFF2C303B);
+  static const Color darkText = Color(0xFFE8EAF0);
+  static const Color darkTextSecondary = Color(0xFF9AA0AD);
+  static const Color darkPrimaryTint = Color(0xFF26234D);
+  static const Color darkPrimary = Color(0xFF9A8CFF);
 }

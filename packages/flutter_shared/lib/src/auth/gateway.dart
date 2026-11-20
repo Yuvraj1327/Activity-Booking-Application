@@ -9,6 +9,10 @@ abstract class AuthGateway {
   /// editable by the user and never used for permissions.
   Map<String, dynamic> get userMetadata;
 
+  /// Identity provider of the current user (`email`, `google`, ...), from Supabase `app_metadata`,
+  /// which only the server can set. Used to keep social sign-ups at the customer role.
+  String? get authProvider;
+
   Stream<GatewayEvent> get events;
 
   Future<SignUpOutcome> signUp({
@@ -23,6 +27,12 @@ abstract class AuthGateway {
   Future<void> sendPasswordReset(String email);
   Future<void> updatePassword(String newPassword);
   Future<void> signOut();
+
+  /// Ends this session and every other session of the account (all devices).
+  Future<void> signOutEverywhere();
+
+  /// When the current session started signing in (null if unknown).
+  DateTime? get sessionStartedAt;
 
   Future<MeResponse> fetchMe();
   Future<UserProfile> createProfile(CreateProfileRequest request);

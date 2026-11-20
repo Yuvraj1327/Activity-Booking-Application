@@ -8,7 +8,7 @@ Supabase Auth handles credentials, sessions and token refresh. FastAPI never see
 |---|---|---|---|
 | E-mail + password (with e-mail verification) | ✔ | ✔ (admins only) | Implemented |
 | Password reset (e-mail link, in-app "new password" screen) | ✔ | not built | Implemented in apps |
-| Google OAuth | ✔ (browser flow, behind `GOOGLE_AUTH_ENABLED`) | ✖ | Implemented, **needs dashboard setup** |
+| Google OAuth | ✔ (native picker + Supabase `signInWithIdToken`, browser fallback; behind `GOOGLE_AUTH_ENABLED`) | ✖ | Implemented, **needs Google/Supabase setup**: see GOOGLE_SIGN_IN_SETUP.md. Google sign-ups are always `customer`. |
 | Apple OAuth | ✔ iOS only (behind `APPLE_AUTH_ENABLED`) | ✖ | Implemented, **needs dashboard setup** |
 | Phone OTP | ✔ (behind `PHONE_AUTH_ENABLED`) | ✖ | Implemented, **needs an SMS provider (open question N24)** |
 | TOTP second factor | ✖ | ✔ (enrol + verify; required in staging/production) | Implemented |

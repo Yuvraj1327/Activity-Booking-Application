@@ -1,6 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_shared/flutter_shared.dart';
 
 /// Venue photo with a cached download, a calm placeholder while loading and a neutral fallback
 /// when there is no URL or it fails. Never shows an unrelated stock image.
@@ -47,7 +46,7 @@ class ImageFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: ZuruvColors.primaryTint,
+      color: Theme.of(context).colorScheme.primaryContainer,
       alignment: Alignment.center,
       child: Icon(Icons.sports_score_rounded, size: 36, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
     );

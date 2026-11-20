@@ -10,7 +10,9 @@ import 'package:zuruv/app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zuruv/customer/features/venue_details/directions_launcher.dart';
 import 'package:zuruv/core/config/app_config.dart';
+import 'package:zuruv/core/settings/settings_repository.dart';
 import 'package:zuruv/core/storage/preferences.dart';
+import '../settings_fakes.dart';
 import 'package:zuruv/customer/features/location/location_service.dart';
 import 'package:zuruv/customer/features/profile/avatar_service.dart';
 import 'package:zuruv/customer/features/payments/checkout_launcher.dart';
@@ -530,7 +532,9 @@ class TestEnv {
     FakeNotificationRepository? notifications,
     FakeReviewRepository? reviews,
     FakeDirectionsLauncher? directions,
-  })  : gateway = gateway ?? FakeAuthGateway(hasSession: true, me: meWith(AppRole.customer)),
+    FakeSettingsRepository? settings,
+  })  : settings = settings ?? FakeSettingsRepository(),
+        gateway = gateway ?? FakeAuthGateway(hasSession: true, me: meWith(AppRole.customer)),
         venues = venues ?? FakeVenueRepository(),
         profiles = profiles ?? FakeProfileRepository(),
         location = location ?? FakeLocationService(),
@@ -551,6 +555,7 @@ class TestEnv {
   final FakeNotificationRepository notifications;
   final FakeReviewRepository reviews;
   final FakeDirectionsLauncher directions;
+  final FakeSettingsRepository settings;
 
   Future<Widget> app({Map<String, Object> prefs = const {PrefKeys.onboardingDone: true}}) async {
     SharedPreferences.setMockInitialValues(prefs);
@@ -570,6 +575,7 @@ class TestEnv {
         profileRepositoryProvider.overrideWithValue(profiles),
         locationServiceProvider.overrideWithValue(location),
         avatarServiceProvider.overrideWithValue(FakeAvatarService()),
+        settingsRepositoryProvider.overrideWithValue(settings..profile = gateway.me?.profile),
       ],
       child: const ZuruvApp(),
     );

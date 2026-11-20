@@ -31,6 +31,7 @@ Severity: **High** = blocks a safe production launch; **Medium** = launch-able w
 - Pagination in the admin uses offset paging; very deep pages are slower.
 - Reference images exist only for the customer and owner apps; the admin follows the shared design language (no admin mockups were supplied).
 - Android `<queries>` for https links is added by `scripts/configure_customer_platforms.py`; re-run it after regenerating platform folders.
+- Settings: support tickets (`support_tickets`) and account-deletion requests (`profiles.deletion_requested_at`) have no admin screen yet; operators read/process them in the database. App language only affects dates, numbers and system dialogs. Dark mode is complete for shared components; some one-off screens may still use fixed light colours (check on device).
 
 ## Credentials and accounts you must supply
 

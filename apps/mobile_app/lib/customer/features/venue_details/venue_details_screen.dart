@@ -72,7 +72,7 @@ class _Content extends ConsumerWidget {
           SliverAppBar(
             pinned: true,
             expandedHeight: 300,
-            backgroundColor: Colors.white,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             automaticallyImplyLeading: false,
             leading: Padding(
               padding: const EdgeInsets.all(6),
@@ -82,7 +82,7 @@ class _Content extends ConsumerWidget {
                 child: IconButton(
                   tooltip: 'Back',
                   onPressed: () => context.pop(),
-                  icon: const Icon(Icons.arrow_back_rounded, color: ZuruvColors.text),
+                  icon: Icon(Icons.arrow_back_rounded, color: Theme.of(context).colorScheme.onSurface),
                 ),
               ),
             ),
@@ -121,7 +121,7 @@ class _Content extends ConsumerWidget {
                               Chip(
                                 avatar: Icon(categoryIcon(c.iconKey, slug: c.slug), size: 16, color: theme.colorScheme.primary),
                                 label: Text(c.name),
-                                backgroundColor: ZuruvColors.primaryTint,
+                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                                 side: BorderSide.none,
                               ),
                           ],
@@ -182,7 +182,7 @@ class _Content extends ConsumerWidget {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: ZuruvColors.border),
+                                  border: Border.all(color: Theme.of(context).colorScheme.outline),
                                   borderRadius: BorderRadius.circular(Radii.button),
                                 ),
                                 child: Row(
@@ -343,7 +343,7 @@ class _BookBar extends StatelessWidget {
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.fromLTRB(Gap.page, 12, Gap.page, 12),
-        decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: ZuruvColors.border))),
+        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline))),
         child: Row(
           children: [
             Column(

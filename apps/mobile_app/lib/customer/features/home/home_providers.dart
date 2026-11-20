@@ -12,14 +12,18 @@ final homePopularQueryProvider = Provider<VenueQuery>((ref) {
   return VenueQuery(cityId: cityId, sort: VenueSort.popular, pageSize: AppConfig.homeSectionSize);
 });
 
+/// Selected "Within N km" chip on Home.
+final homeNearbyRadiusProvider = StateProvider<double>((ref) => 5);
+
 /// Nearest venues, only when the device location is available.
 final homeNearbyQueryProvider = Provider<VenueQuery?>((ref) {
   final point = ref.watch(locationControllerProvider.select((s) => s.point));
   if (point == null) return null;
+  final radius = ref.watch(homeNearbyRadiusProvider);
   return VenueQuery(
     lat: _round(point.lat),
     lng: _round(point.lng),
-    radiusKm: AppConfig.nearbyRadiusKm,
+    radiusKm: radius,
     sort: VenueSort.distance,
     pageSize: AppConfig.homeSectionSize,
   );

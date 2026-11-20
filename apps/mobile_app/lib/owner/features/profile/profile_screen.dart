@@ -64,10 +64,8 @@ class ProfileScreen extends ConsumerWidget {
               _Tile(Icons.star_rounded, 'Reviews', 'What customers say', '/owner/reviews'),
               _Tile(Icons.notifications_none_rounded, 'Notifications', 'Bookings, payments, reviews', '/owner/notifications'),
             ]),
-            const _Group(title: 'Settings', tiles: [
-              _Tile(Icons.tune_rounded, 'Notification preferences', 'Choose what you hear about', '/owner/profile/notifications'),
-              _Tile(Icons.help_outline_rounded, 'Help & support', null, '/owner/profile/help'),
-              _Tile(Icons.description_outlined, 'Terms & policies', null, '/owner/profile/terms'),
+            const _Group(title: 'App', tiles: [
+              _Tile(Icons.settings_outlined, 'Settings', 'Account, appearance, notifications, help', '/owner/settings'),
             ]),
             const SizedBox(height: Gap.lg),
             OutlinedButton.icon(

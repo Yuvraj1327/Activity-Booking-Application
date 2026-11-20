@@ -1,7 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { env } from "@/lib/env";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getVerifiedSession } from "@/lib/session";
 
 /** Error from the ZURUV API as seen by a server component / action. */
 export class AdminApiError extends Error {
@@ -25,13 +25,9 @@ function qs(query: Query = {}): string {
 }
 
 async function token(): Promise<string> {
-  const supabase = await getServerSupabase();
-  if (!supabase) redirect("/login");
-  const { data: user } = await supabase.auth.getUser(); // validated with the Auth server
-  if (!user.user) redirect("/login");
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) redirect("/login");
-  return data.session.access_token;
+  const session = await getVerifiedSession(); // verified once per request
+  if (session.kind !== "ok") redirect("/login");
+  return session.token;
 }
 
 /**
@@ -64,7 +60,7 @@ export async function adminGet<T>(path: string, query?: Query): Promise<T> {
   return (await adminRequest(path, { query })).json() as Promise<T>;
 }
 
-export async function adminSend<T>(method: "POST" | "PATCH", path: string, body?: unknown): Promise<T> {
+export async function adminSend<T>(method: "POST" | "PATCH" | "PUT", path: string, body?: unknown): Promise<T> {
   const res = await adminRequest(path, {
     method,
     headers: body === undefined ? {} : { "Content-Type": "application/json" },

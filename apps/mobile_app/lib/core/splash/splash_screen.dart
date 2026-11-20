@@ -66,23 +66,14 @@ class _BrandedSplashScreenState extends ConsumerState<BrandedSplashScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 84,
-                        height: 84,
+                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(26),
+                          borderRadius: BorderRadius.circular(28),
                         ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'Z',
-                          style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: ZuruvColors.customerPrimary),
-                        ),
+                        child: Image.asset('assets/images/logo.png', width: 200, semanticLabel: 'ZURUV'),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'ZURUV',
-                        style: TextStyle(fontSize: 36, letterSpacing: 6, fontWeight: FontWeight.w800, color: Colors.white),
-                      ),
                       const SizedBox(height: 8),
                       Text(
                         'Discover. Book. Play.',

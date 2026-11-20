@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import '../config/app_env.dart';
@@ -22,6 +24,9 @@ class SupabaseAuthGateway implements AuthGateway {
 
   @override
   Map<String, dynamic> get userMetadata => _auth.currentUser?.userMetadata ?? const {};
+
+  @override
+  String? get authProvider => _auth.currentUser?.appMetadata['provider'] as String?;
 
   @override
   Stream<GatewayEvent> get events {
@@ -88,11 +93,46 @@ class SupabaseAuthGateway implements AuthGateway {
 
   @override
   Future<void> signInWithOAuth(OAuthKind kind) => _guard(() async {
+        if (kind == OAuthKind.google && AppEnv.googleWebClientId.isNotEmpty) {
+          await _signInWithGoogleNative();
+          return;
+        }
         await _auth.signInWithOAuth(
           kind == OAuthKind.google ? sb.OAuthProvider.google : sb.OAuthProvider.apple,
           redirectTo: _redirect,
         );
       });
+
+  /// Native Google account picker, then the ID token is exchanged for a Supabase session.
+  /// The SDK emits `signedIn`, which makes the auth controller fetch/create the profile.
+  Future<void> _signInWithGoogleNative() async {
+    final google = GoogleSignIn(
+      scopes: const ['email', 'profile'],
+      serverClientId: AppEnv.googleWebClientId,
+      clientId: AppEnv.googleIosClientId.isEmpty ? null : AppEnv.googleIosClientId,
+    );
+    final GoogleSignInAccount? account;
+    try {
+      account = await google.signIn();
+    } on PlatformException catch (e) {
+      if (e.code == GoogleSignIn.kSignInCanceledError) throw const AuthCancelledException();
+      if (e.code == GoogleSignIn.kNetworkError) {
+        throw const AuthActionException('Cannot reach Google. Check your connection.');
+      }
+      throw const AuthActionException('Google sign-in failed. Please try again.');
+    }
+    if (account == null) throw const AuthCancelledException();
+    final tokens = await account.authentication;
+    final idToken = tokens.idToken;
+    if (idToken == null) {
+      throw const AuthActionException('Google did not return a sign-in token. Please try again.');
+    }
+    await _auth.signInWithIdToken(
+      provider: sb.OAuthProvider.google,
+      idToken: idToken,
+      accessToken: tokens.accessToken,
+    );
+  }
 
   @override
   Future<void> sendPhoneOtp(String phone) => _guard(() => _auth.signInWithOtp(phone: phone));
@@ -112,7 +152,25 @@ class SupabaseAuthGateway implements AuthGateway {
   @override
   Future<void> signOut() async {
     if (!AppEnv.supabaseConfigured) return;
+    try {
+      if (AppEnv.googleWebClientId.isNotEmpty) await GoogleSignIn().signOut(); // forget the picked account
+    } catch (_) {}
     await _auth.signOut();
+  }
+
+  @override
+  Future<void> signOutEverywhere() async {
+    if (!AppEnv.supabaseConfigured) return;
+    try {
+      if (AppEnv.googleWebClientId.isNotEmpty) await GoogleSignIn().signOut();
+    } catch (_) {}
+    await _auth.signOut(scope: sb.SignOutScope.global);
+  }
+
+  @override
+  DateTime? get sessionStartedAt {
+    final raw = _auth.currentUser?.lastSignInAt;
+    return raw == null ? null : DateTime.tryParse(raw)?.toLocal();
   }
 
   @override

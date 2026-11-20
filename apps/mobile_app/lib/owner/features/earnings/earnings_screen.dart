@@ -96,7 +96,7 @@ class EarningsScreen extends ConsumerWidget {
                 const SizedBox(height: Gap.md),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(backgroundColor: ZuruvColors.primaryTint, child: Icon(Icons.account_balance_rounded)),
+                  leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.account_balance_rounded)),
                   title: const Text('Bank & payout settings'),
                   subtitle: const Text('Set up where payouts will go'),
                   trailing: const Icon(Icons.chevron_right_rounded),

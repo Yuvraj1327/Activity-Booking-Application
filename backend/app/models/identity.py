@@ -1,8 +1,10 @@
 """Identity tables. `profiles.id` equals Supabase `auth.users.id` (that table is not mapped)."""
 
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, ForeignKeyConstraint, Text
+from sqlalchemy import DateTime, ForeignKey, ForeignKeyConstraint, Text, text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,6 +25,8 @@ class Profile(TimestampMixin, Base):
     email: Mapped[str | None] = mapped_column(Text)
     phone: Mapped[str | None] = mapped_column(Text)
     avatar_path: Mapped[str | None] = mapped_column(Text)
+    language: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'en'"))
+    deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
     def is_active(self) -> bool:
@@ -39,6 +43,9 @@ class CustomerProfile(TimestampMixin, Base):
     role: Mapped[str] = mapped_column(Text, nullable=False, server_default="customer")
     preferred_city_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("cities.id", ondelete="SET NULL")
+    )
+    preferred_category_ids: Mapped[list[UUID]] = mapped_column(
+        ARRAY(PG_UUID(as_uuid=True)), nullable=False, server_default=text("'{}'")
     )
 
 

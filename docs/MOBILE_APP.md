@@ -130,3 +130,21 @@ Run from the repo root: `make flutter-analyze` and `make flutter-test`
 (`packages/flutter_shared` and `apps/mobile_app`). Role flows are covered by `test/core/router_rules_test.dart`
 (pure routing rules), the customer and owner `app_flow_test.dart` files (each role signs in through the unified
 app, sees its own dashboard and is bounced from the other's pages) and the shared `auth_controller_test.dart`.
+
+
+## Settings (Customer and Venue Owner)
+
+Entry: **Profile > Settings** (`/settings` for customers, `/owner/settings` for owners). One implementation in `lib/core/settings/`, mounted by both route files (`settings_routes.dart`).
+
+| Section | Behaviour | Stored |
+|---|---|---|
+| Profile | existing Edit profile screen: name, phone, upload / replace / **remove** photo (Supabase Storage `profile-images`); e-mail is read-only (it is the sign-in identity) | `profiles`, Storage |
+| Account | account info; change password (verifies the current password by re-authenticating, then `updateUser`); account-deletion request with cancel | Supabase Auth, `profiles.deletion_requested_at` |
+| Appearance | Light / Dark / System, applied app-wide (customer and owner themes both have a dark variant) | device (`theme_mode_v1`) |
+| Preferences | language (en/hi); customers also: sports interests and default city | `profiles.language`, `customer_profiles.preferred_category_ids`, existing city selection |
+| Notifications | push, e-mail, bookings, payments, promotions | `notification_preferences` (enforced server side) |
+| Privacy & security | location permission status + open phone settings; this device's session; sign out of this device / **all devices** (Supabase global sign-out); privacy policy | Supabase Auth |
+| Help & support | role-specific FAQs; contact support, feedback, report an issue (stored as tickets); "My messages" history | `support_tickets` |
+| About | app version/build (package_info_plus), Terms, Privacy Policy | n/a |
+
+Honest limits: the language setting changes dates, numbers and system dialogs only (the app's own text is English; full translation is future work). Terms and Privacy pages say the legal text is pending (no text was supplied). Supabase cannot list other devices' sessions from the client, so "active sessions" shows this device plus sign-out-everywhere. Promotional notifications are stored and enforced, but no promotional notification is sent by the platform yet. Support tickets and deletion requests have no admin screen yet (see KNOWN_ISSUES).

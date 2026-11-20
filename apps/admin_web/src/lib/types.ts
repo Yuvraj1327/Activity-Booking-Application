@@ -276,3 +276,18 @@ export type AuditRow = {
   metadata: Record<string, unknown>;
   created_at: string;
 };
+
+// ---- Settings (GET /profiles/me, /notifications/preferences, /version)
+export type MyProfile = {
+  id: string;
+  role: "admin" | "owner" | "customer";
+  status: "active" | "suspended";
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  avatar_path: string | null;
+  created_at: string;
+  updated_at: string;
+};
+export type NotificationPreferences = { push_enabled: boolean; email_enabled: boolean };
+export type ApiVersion = { name: string; version: string; api_version: string };

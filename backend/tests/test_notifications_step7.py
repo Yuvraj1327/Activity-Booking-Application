@@ -126,9 +126,12 @@ def test_preferences_default_update_and_effect(clean_db):
         assert env.api.get(f"{API}/notifications/preferences", headers=h).json() == {
             "push_enabled": True,
             "email_enabled": True,
+            "booking_enabled": True,
+            "payment_enabled": True,
+            "promo_enabled": True,
         }
         r = env.api.put(f"{API}/notifications/preferences", json={"email_enabled": False}, headers=h)
-        assert r.json() == {"push_enabled": True, "email_enabled": False}
+        assert r.json()["push_enabled"] is True and r.json()["email_enabled"] is False
         _register(env, h)
         paid_booking(env, w)
         # in-app + push yes, email no (customer opted out); owner still gets theirs
@@ -341,3 +344,22 @@ def test_unknown_uuid_notification_is_404(clean_db):
     with payment_app(clean_db) as env:
         r = env.api.post(f"{API}/notifications/{uuid.uuid4()}/read", headers=w["customer_h"])
         assert r.status_code == 404
+
+
+def test_type_switches_silence_push_and_email_but_keep_the_in_app_copy(clean_db):
+    w = seed_world(clean_db)
+    with payment_app(clean_db) as env:
+        h = w["customer_h"]
+        r = env.api.put(
+            f"{API}/notifications/preferences",
+            json={"booking_enabled": False, "payment_enabled": False},
+            headers=h,
+        )
+        assert (
+            r.status_code == 200 and r.json()["booking_enabled"] is False and r.json()["push_enabled"] is True
+        )
+        _register(env, h)
+        paid_booking(env, w)
+        mine = rows(clean_db, "SELECT push_status FROM public.notifications WHERE user_id=$1", w["customer"])
+        assert mine and all(n["push_status"] == "skipped" for n in mine)  # still listed in the app
+        assert w["customer"] not in {m.to for m, _ in env.mail.sent}

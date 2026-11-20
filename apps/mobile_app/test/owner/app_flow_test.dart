@@ -170,12 +170,16 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Notification preferences'));
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notifications'));
     await tester.pumpAndSettle();
     expect(find.text('Push notifications'), findsOneWidget);
     await tester.tap(find.widgetWithText(SwitchListTile, 'Push notifications'));
     await tester.pumpAndSettle();
-    expect(repo.channelUpdates.single, {'push': false, 'email': null}); // stored through the API
+    expect(env.settings.prefUpdates.single, {'push_enabled': false}); // stored through the API
+    await tester.pageBack();
+    await tester.pumpAndSettle();
     await tester.pageBack();
     await tester.pumpAndSettle();
 

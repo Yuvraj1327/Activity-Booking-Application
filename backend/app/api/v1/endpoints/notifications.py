@@ -62,14 +62,13 @@ async def read_one(notification_id: UUID, request: Request, user: AnyUser, sessi
     "/notifications/preferences", response_model=PreferencesOut, summary="My notification preferences"
 )
 async def get_prefs(user: AnyUser, session: DbSession) -> PreferencesOut:
-    push, mail = await svc.get_preferences(session, user.id)
-    return PreferencesOut(push_enabled=push, email_enabled=mail)
+    return PreferencesOut(**await svc.get_preferences(session, user.id))
 
 
 @router.put("/notifications/preferences", response_model=PreferencesOut, summary="Update my preferences")
 async def put_prefs(body: PreferencesUpdate, user: AnyUser, session: DbSession) -> PreferencesOut:
-    push, mail = await svc.set_preferences(session, user.id, body.push_enabled, body.email_enabled)
-    return PreferencesOut(push_enabled=push, email_enabled=mail)
+    changes = body.model_dump(exclude_unset=True)
+    return PreferencesOut(**await svc.set_preferences(session, user.id, changes))
 
 
 @router.put(

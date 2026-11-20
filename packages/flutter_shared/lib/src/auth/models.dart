@@ -28,6 +28,8 @@ class UserProfile {
     this.email,
     this.phone,
     this.avatarPath,
+    this.language = 'en',
+    this.deletionRequestedAt,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -38,6 +40,10 @@ class UserProfile {
         email: json['email'] as String?,
         phone: json['phone'] as String?,
         avatarPath: json['avatar_path'] as String?,
+        language: json['language'] as String? ?? 'en',
+        deletionRequestedAt: json['deletion_requested_at'] == null
+            ? null
+            : DateTime.tryParse(json['deletion_requested_at'] as String),
       );
 
   final String id;
@@ -47,6 +53,12 @@ class UserProfile {
   final String? email;
   final String? phone;
   final String? avatarPath;
+
+  /// Preferred language code (`en`, `hi`), stored on the account.
+  final String language;
+
+  /// Set while an account-deletion request is waiting for an administrator.
+  final DateTime? deletionRequestedAt;
 
   bool get isActive => status == 'active';
 }
@@ -91,6 +103,13 @@ enum SignUpOutcome { signedIn, confirmationRequired }
 enum OAuthKind { google, apple }
 
 enum GatewayEvent { signedIn, signedOut, passwordRecovery }
+
+/// The user closed the sign-in sheet. Not an error: screens show nothing.
+class AuthCancelledException implements Exception {
+  const AuthCancelledException();
+  @override
+  String toString() => 'cancelled';
+}
 
 /// A user-facing failure of a sign-in action (wrong password, weak password, ...).
 class AuthActionException implements Exception {

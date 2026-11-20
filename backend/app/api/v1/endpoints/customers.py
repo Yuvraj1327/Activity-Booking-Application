@@ -14,6 +14,7 @@ async def get_customer(user: CustomerUser, session: DbSession) -> CustomerMe:
     return CustomerMe(
         profile=ProfileOut.model_validate(user.profile),
         preferred_city_id=customer.preferred_city_id if customer else None,
+        preferred_category_ids=customer.preferred_category_ids if customer else [],
     )
 
 
@@ -21,5 +22,7 @@ async def get_customer(user: CustomerUser, session: DbSession) -> CustomerMe:
 async def update_customer(patch: CustomerUpdate, user: CustomerUser, session: DbSession) -> CustomerMe:
     customer = await ProfileService(session).update_customer(user.id, patch)
     return CustomerMe(
-        profile=ProfileOut.model_validate(user.profile), preferred_city_id=customer.preferred_city_id
+        profile=ProfileOut.model_validate(user.profile),
+        preferred_city_id=customer.preferred_city_id,
+        preferred_category_ids=customer.preferred_category_ids,
     )

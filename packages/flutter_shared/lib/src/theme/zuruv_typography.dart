@@ -6,6 +6,14 @@ import 'zuruv_colors.dart';
 class ZuruvTypography {
   const ZuruvTypography._();
 
+  /// Same scale with light text colours, for the dark appearance.
+  static TextTheme get darkTextTheme => textTheme.apply(
+        bodyColor: ZuruvColors.darkText,
+        displayColor: ZuruvColors.darkText,
+      ).copyWith(
+        bodySmall: textTheme.bodySmall?.copyWith(color: ZuruvColors.darkTextSecondary),
+      );
+
   static const TextTheme textTheme = TextTheme(
     headlineLarge: TextStyle(fontSize: 28, height: 1.25, fontWeight: FontWeight.w700, color: ZuruvColors.text),
     headlineMedium: TextStyle(fontSize: 24, height: 1.25, fontWeight: FontWeight.w700, color: ZuruvColors.text),
