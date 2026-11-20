@@ -13,8 +13,8 @@ void main() {
   testWidgets('first sign-in: the five-page owner intro, then the Owner Dashboard', (tester) async {
     // The general first-run intro is already done; the owner intro has not been seen yet.
     await TestEnv().pump(tester, prefs: {PrefKeys.onboardingDone: true});
-    expect(find.text('List your venue'), findsOneWidget);
-    for (final title in ['Reach more customers', 'Manage bookings', 'Track earnings', 'Grow your business']) {
+    expect(find.text('List Your Venue'), findsOneWidget);
+    for (final title in ['Reach More Customers', 'Manage Bookings', 'Track Earnings', 'Grow Your Business']) {
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
       expect(find.text(title), findsOneWidget);
@@ -50,7 +50,7 @@ void main() {
 
   testWidgets('onboarding is not shown again once completed', (tester) async {
     await TestEnv(gateway: FakeAuthGateway()).pump(tester, prefs: {PrefKeys.onboardingDone: true});
-    expect(find.text('List your venue'), findsNothing);
+    expect(find.text('List Your Venue'), findsNothing);
   });
 
   testWidgets('dashboard shows real booking counts and marks revenue and utilization unavailable', (tester) async {
