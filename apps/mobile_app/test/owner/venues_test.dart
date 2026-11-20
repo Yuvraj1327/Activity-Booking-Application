@@ -34,7 +34,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), '');
     await tester.pump(const Duration(milliseconds: 600));
-    await tester.tap(find.text('Drafts'));
+    await tester.tap(find.textContaining('Drafts'));
     await tester.pumpAndSettle();
     expect(repo.statusFilters.last, 'draft');
     expect(find.text('Ace Arena'), findsNothing);

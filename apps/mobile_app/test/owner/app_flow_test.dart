@@ -85,7 +85,8 @@ void main() {
     await tester.tap(inNavBar('Bookings'));
     await tester.pumpAndSettle();
     expect(find.text('Cathy Customer'), findsOneWidget);
-    expect(find.text('ZUR-ABCD2345 · ₹500'), findsOneWidget);
+    expect(find.text('ZUR-ABCD2345'), findsOneWidget);
+    expect(find.text('₹500'), findsOneWidget);
     expect(find.text('Old Customer'), findsNothing);
     await tester.tap(find.text('Past'));
     await tester.pumpAndSettle();

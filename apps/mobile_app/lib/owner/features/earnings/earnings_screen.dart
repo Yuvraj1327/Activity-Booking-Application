@@ -24,7 +24,7 @@ class EarningsScreen extends ConsumerWidget {
     final data = ref.watch(earningsProvider);
     final payments = ref.watch(ownerPaymentsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Payments & Earnings')),
+      appBar: AppBar(title: const Text('Payments & Earnings'), titleSpacing: Gap.page),
       body: data.when(
         loading: () => const LoadingView(),
         error: (e, _) => ErrorView.fromError(e, onRetry: () {
@@ -39,21 +39,28 @@ class EarningsScreen extends ConsumerWidget {
               ref.invalidate(ownerPaymentsProvider);
             },
             child: ListView(
-              padding: const EdgeInsets.only(top: 8, bottom: 32),
+              padding: const EdgeInsets.only(top: 4, bottom: 32),
               children: [
-                Row(children: [
-                  Expanded(
-                    child: StatTile(
-                      label: 'Gross paid by customers',
-                      icon: Icons.currency_rupee_rounded,
-                      value: formatMoney(e.grossPaidPaise, currency: e.currency),
+                HeroStatCard(
+                  label: 'Gross paid by customers',
+                  icon: Icons.account_balance_wallet_rounded,
+                  value: formatMoney(e.grossPaidPaise, currency: e.currency),
+                ),
+                const SizedBox(height: Gap.md),
+                IntrinsicHeight(
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Expanded(child: StatTile(label: 'Paid bookings', icon: Icons.receipt_long_rounded, value: '${e.paymentsCount}')),
+                    const SizedBox(width: Gap.md),
+                    Expanded(
+                      child: StatTile(
+                        label: 'Average per booking',
+                        icon: Icons.trending_up_rounded,
+                        value: e.paymentsCount == 0 ? null : formatMoney((e.grossPaidPaise / e.paymentsCount).round(), currency: e.currency),
+                        note: e.paymentsCount == 0 ? 'No paid bookings yet' : null,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: Gap.md),
-                  Expanded(
-                    child: StatTile(label: 'Paid bookings', icon: Icons.receipt_long_rounded, value: '${e.paymentsCount}'),
-                  ),
-                ]),
+                  ]),
+                ),
                 const SizedBox(height: Gap.sm),
                 Text(
                   'Gross amounts only. Platform fees, tax and net earnings are not calculated yet.',
@@ -62,11 +69,22 @@ class EarningsScreen extends ConsumerWidget {
                 if (e.byVenue.isNotEmpty) ...[
                   const SectionHeader('By venue'),
                   for (final v in e.byVenue)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(v.venueName),
-                      subtitle: Text('${v.payments} paid booking${v.payments == 1 ? '' : 's'}'),
-                      trailing: Text(formatMoney(v.grossPaidPaise, currency: e.currency), style: Theme.of(context).textTheme.titleSmall),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: Gap.sm),
+                      child: OwnerCard(
+                        padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
+                        child: Row(children: [
+                          const IconBadge(Icons.storefront_rounded, size: 38),
+                          const SizedBox(width: Gap.md),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(v.venueName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                              Text('${v.payments} paid booking${v.payments == 1 ? '' : 's'}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: ZuruvColors.textSecondary)),
+                            ]),
+                          ),
+                          Text(formatMoney(v.grossPaidPaise, currency: e.currency), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        ]),
+                      ),
                     ),
                 ],
                 const SectionHeader('Payment history'),
@@ -94,13 +112,20 @@ class EarningsScreen extends ConsumerWidget {
                   icon: Icons.account_balance_outlined,
                 ),
                 const SizedBox(height: Gap.md),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.account_balance_rounded)),
-                  title: const Text('Bank & payout settings'),
-                  subtitle: const Text('Set up where payouts will go'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                OwnerCard(
+                  padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
                   onTap: () => context.push('/owner/profile/payout'),
+                  child: Row(children: [
+                    const IconBadge(Icons.account_balance_rounded, size: 40),
+                    const SizedBox(width: Gap.md),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Text('Bank & payout settings', style: TextStyle(fontWeight: FontWeight.w700)),
+                        Text('Set up where payouts will go', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: ZuruvColors.textSecondary)),
+                      ]),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: ZuruvColors.textSecondary),
+                  ]),
                 ),
               ],
             ),
@@ -121,18 +146,32 @@ class _PaymentTile extends StatelessWidget {
     final p = payment;
     final theme = Theme.of(context);
     final when = (p.capturedAt ?? p.createdAt).toLocal();
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      onTap: () => context.push('/owner/bookings/${p.bookingId}'),
-      title: Text('${p.venueName} · ${p.courtName}'),
-      subtitle: Text('${p.bookingCode} · ${when.day}/${when.month}/${when.year}'),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(formatMoney(p.amountPaise, currency: p.currency), style: theme.textTheme.titleSmall),
-          Text(p.status == 'captured' ? 'Paid' : p.status.replaceAll('_', ' '), style: theme.textTheme.bodySmall),
-        ],
+    final paid = p.status == 'captured';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gap.sm),
+      child: OwnerCard(
+        padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
+        onTap: () => context.push('/owner/bookings/${p.bookingId}'),
+        child: Row(children: [
+          IconBadge(paid ? Icons.check_circle_outline_rounded : Icons.history_rounded, size: 40, color: paid ? ZuruvColors.success : ZuruvColors.textSecondary),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${p.venueName} · ${p.courtName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              Text('${p.bookingCode} · ${when.day}/${when.month}/${when.year}', maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: ZuruvColors.textSecondary)),
+            ]),
+          ),
+          const SizedBox(width: Gap.sm),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(formatMoney(p.amountPaise, currency: p.currency), style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+              Text(paid ? 'Paid' : p.status.replaceAll('_', ' '), style: theme.textTheme.bodySmall?.copyWith(color: paid ? ZuruvColors.success : ZuruvColors.textSecondary, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ]),
       ),
     );
   }

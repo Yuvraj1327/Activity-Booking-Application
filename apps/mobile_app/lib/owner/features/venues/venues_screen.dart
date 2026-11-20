@@ -163,13 +163,21 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(venueListProvider);
     final controller = ref.read(venueListProvider.notifier);
+    final dash = ref.watch(dashboardProvider).valueOrNull;
+    String chip(String label, int? count) => count == null ? label : '$label ($count)';
+    final counts = <String?, int?>{
+      null: dash?.venuesTotal,
+      'published': dash?.venuesPublished,
+      'draft': dash?.venuesDraft,
+      'archived': dash == null ? null : (dash.venuesTotal - dash.venuesPublished - dash.venuesDraft),
+    };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Venues')),
+      appBar: AppBar(title: const Text('My Venues'), titleSpacing: Gap.page),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/owner/venues/new'),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Add venue'),
+        label: const Text('Add venue', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: ResponsivePage(
         maxWidth: 720,
@@ -183,6 +191,8 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
                   hintText: 'Search your venues',
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _search.text.isEmpty
                       ? null
@@ -206,8 +216,15 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
                     Padding(
                       padding: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
                       child: ChoiceChip(
-                        label: Text(label),
+                        label: Text(chip(label, counts[value])),
+                        showCheckmark: false,
                         selected: state.status == value,
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        labelStyle: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: state.status == value ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                        ),
                         onSelected: (_) => controller.setStatus(value),
                       ),
                     ),
@@ -266,47 +283,54 @@ class VenueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(Radii.card),
+    final location = joinLocation(venue.addressLine, venue.cityName).ifEmpty('Location not set');
+    return OwnerCard(
+      padding: const EdgeInsets.all(Gap.md),
       onTap: () => context.push('/owner/venues/${venue.id}'),
-      child: Container(
-        padding: const EdgeInsets.all(Gap.md),
-        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(Radii.card), boxShadow: Shadows.card),
-        child: Row(
-          children: [
-            SizedBox(width: 96, height: 96, child: ZNetworkImage(url: venue.coverImageUrl, borderRadius: 14, semanticLabel: venue.name)),
-            const SizedBox(width: Gap.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Expanded(
-                      child: Text(venue.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                    ),
-                    StatusChip(venue.status),
-                  ]),
-                  const SizedBox(height: 4),
-                  Text(
-                    joinLocation(venue.addressLine, venue.cityName).ifEmpty('Location not set'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(color: ZuruvColors.textSecondary),
+      child: Row(
+        children: [
+          SizedBox(width: 92, height: 92, child: ZNetworkImage(url: venue.coverImageUrl, borderRadius: 14, semanticLabel: venue.name)),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Expanded(
+                    flex: 3,
+                    child: Text(venue.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                   ),
-                  const SizedBox(height: 6),
-                  Row(children: [
-                    RatingText(rating: venue.ratingAvg, count: venue.ratingCount),
-                    const Spacer(),
-                    Text(
-                      venue.startingPricePaise == null ? 'Price not set' : 'From ${formatMoney(venue.startingPricePaise!, currency: venue.currency)}/hr',
-                      style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                  const SizedBox(width: 6),
+                  Flexible(flex: 2, child: StatusChip(venue.status)),
+                ]),
+                const SizedBox(height: 4),
+                Row(children: [
+                  const Icon(Icons.location_on_outlined, size: 15, color: ZuruvColors.textSecondary),
+                  const SizedBox(width: 3),
+                  Expanded(
+                    child: Text(location, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: ZuruvColors.textSecondary)),
+                  ),
+                ]),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: Align(alignment: Alignment.centerLeft, child: RatingText(rating: venue.ratingAvg, count: venue.ratingCount))),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        venue.startingPricePaise == null ? 'Price not set' : 'From ${formatMoney(venue.startingPricePaise!, currency: venue.currency)}/hr',
+                        maxLines: 1,
+                        style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
+                      ),
                     ),
-                  ]),
-                ],
-              ),
+                  ),
+                ]),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
