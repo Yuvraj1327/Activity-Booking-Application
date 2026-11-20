@@ -81,21 +81,3 @@ export function Sidebar() {
     </aside>
   );
 }
-
-/** Below tablet width: a horizontally scrolling tab strip instead of the rail. */
-export function MobileNav() {
-  const pathname = usePathname();
-  return (
-    <nav aria-label="Main (compact)" className="flex gap-1 overflow-x-auto border-b border-border bg-card px-3 py-2 md:hidden">
-      {[...navGroups.flatMap((g) => g.items), settingsItem].map(({ label, href }) => {
-        const active = pathname === href || pathname.startsWith(`${href}/`);
-        return (
-          <Link key={href} href={href} aria-current={active ? "page" : undefined}
-            className={cn("shrink-0 rounded-md px-3 py-1.5 text-sm", active ? "bg-primary-tint font-medium text-primary" : "text-muted-foreground")}>
-            {label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}

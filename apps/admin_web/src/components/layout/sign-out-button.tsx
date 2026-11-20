@@ -39,7 +39,9 @@ export function SignOutButton({ variant = "ghost" }: { variant?: "ghost" | "outl
       aria-live="polite"
     >
       <LogOut className="size-4" aria-hidden />
-      {busy ? "Signing out..." : confirming ? "Confirm sign out?" : "Sign out"}
+      <span className={confirming || busy ? "" : "sr-only sm:not-sr-only"}>
+        {busy ? "Signing out..." : confirming ? "Confirm sign out?" : "Sign out"}
+      </span>
     </Button>
   );
 }

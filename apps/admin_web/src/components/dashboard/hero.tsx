@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BarChart3, CalendarCheck, Store } from "lucide-react";
+import { BarChart3, CalendarCheck, Store, Trophy } from "lucide-react";
 
 const ACTIONS = [
   { href: "/bookings", label: "Manage Bookings", icon: CalendarCheck },
@@ -52,22 +52,25 @@ function LiveHero() {
       aria-label="Welcome"
       className="relative isolate overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary-tint via-card to-card md:hidden"
     >
-      <div className="relative max-w-xl px-6 py-8 md:px-8 md:py-10 lg:max-w-[52%]">
-        <span className="inline-flex rounded-full bg-primary-tint px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+      <Trophy className="pointer-events-none absolute -right-6 -top-6 -z-10 size-40 rotate-12 text-primary/10" aria-hidden />
+      <div className="relative px-4 py-6 sm:px-6 sm:py-8">
+        <Image src="/logo.png" alt="ZURUV" width={800} height={168} className="h-9 w-auto dark:hidden" />
+        <Image src="/logo-dark.png" alt="ZURUV" width={800} height={168} className="hidden h-9 w-auto dark:block" />
+        <span className="mt-5 inline-flex rounded-full bg-primary-tint px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
           Welcome to ZURUV
         </span>
-        <h2 className="mt-4 text-3xl font-bold leading-tight tracking-tight lg:text-4xl">
+        <h2 className="mt-3 text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
           Manage Venues, Bookings &amp; Sports in <span className="text-primary">One Place</span>
         </h2>
-        <p className="mt-3 text-sm text-muted-foreground md:text-base">A complete platform to run and grow your sports marketplace.</p>
-        <div className="mt-6 flex flex-wrap gap-2.5">
+        <p className="mt-2 text-sm text-muted-foreground">A complete platform to run and grow your sports marketplace.</p>
+        <div className="mt-5 grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-3">
           {ACTIONS.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/80 px-3.5 py-2.5 text-sm font-medium shadow-sm backdrop-blur transition-colors hover:bg-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="flex items-center gap-2.5 rounded-xl border border-border bg-card/80 px-3 py-2.5 text-sm font-medium shadow-sm backdrop-blur transition-colors hover:bg-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary min-[420px]:flex-col min-[420px]:gap-1.5 min-[420px]:py-3 min-[420px]:text-center min-[420px]:text-xs"
             >
-              <Icon className="size-[18px] text-primary" aria-hidden />
+              <Icon className="size-5 shrink-0 text-primary" aria-hidden />
               {label}
             </Link>
           ))}
