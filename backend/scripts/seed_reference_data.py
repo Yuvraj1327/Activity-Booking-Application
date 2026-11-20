@@ -59,6 +59,7 @@ CITIES = [
     ("Ahmedabad", "Gujarat"),
     ("Gurugram", "Haryana"),
     ("Jaipur", "Rajasthan"),
+    ("Bhopal", "Madhya Pradesh"),
 ]
 
 
