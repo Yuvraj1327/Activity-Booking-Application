@@ -125,13 +125,16 @@ class PriceLabel extends StatelessWidget {
 
 /// Heart that toggles a favorite optimistically and reports failures.
 class FavoriteButton extends ConsumerWidget {
-  const FavoriteButton({super.key, required this.venue, this.size = 36, this.onLight = false});
+  const FavoriteButton({super.key, required this.venue, this.size = 36, this.onLight = false, this.plain = false});
 
   final VenueSummary venue;
   final double size;
 
   /// Draw on a light background (details app bar) instead of over a photo.
   final bool onLight;
+
+  /// No white circle behind the heart (used on list rows).
+  final bool plain;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -140,7 +143,7 @@ class FavoriteButton extends ConsumerWidget {
       button: true,
       label: isFav ? 'Remove from favorites' : 'Add to favorites',
       child: Material(
-        color: Colors.white.withValues(alpha: 0.92),
+        color: plain ? Colors.transparent : Colors.white.withValues(alpha: 0.92),
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
@@ -168,7 +171,62 @@ class FavoriteButton extends ConsumerWidget {
   }
 }
 
-/// Image card used in vertical lists (explore, category, favorites).
+/// Star, rating, review count and the first sport, e.g. `★ 4.8 (412) · Turf · 1.9 km`.
+class VenueMetaLine extends StatelessWidget {
+  const VenueMetaLine({super.key, required this.venue, this.showSport = true});
+
+  final VenueSummary venue;
+  final bool showSport;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final small = theme.textTheme.bodySmall;
+    final parts = <String>[
+      if (showSport && venue.categories.isNotEmpty) venue.categories.first,
+      if (venue.distanceKm != null) formatDistance(venue.distanceKm!),
+    ];
+    return Row(
+      children: [
+        if (venue.hasRating) ...[
+          const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFB400)),
+          const SizedBox(width: 3),
+          Text(formatRating(venue.ratingAvg!), style: small?.copyWith(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface)),
+          Text(' (${venue.ratingCount})', style: small),
+        ] else
+          Text('New', style: small?.copyWith(fontWeight: FontWeight.w700, color: theme.colorScheme.primary)),
+        if (parts.isNotEmpty) Flexible(child: Text('  ·  ${parts.join('  ·  ')}', style: small, maxLines: 1, overflow: TextOverflow.ellipsis)),
+      ],
+    );
+  }
+}
+
+/// `₹700/hr` in a soft blue pill.
+class PricePill extends StatelessWidget {
+  const PricePill({super.key, required this.venue});
+
+  final VenueSummary venue;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final price = venue.startingPricePaise;
+    if (price == null) return Text('Pricing soon', style: theme.textTheme.bodySmall);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: theme.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(10)),
+      child: Text(
+        '${formatMoney(price, currency: venue.currency)}/hr',
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: theme.colorScheme.primary),
+      ),
+    );
+  }
+}
+
+/// A venue counts as "Top rated" from real data only: a 4.5+ average over at least 10 reviews.
+bool isTopRated(VenueSummary v) => v.hasRating && v.ratingAvg! >= 4.5 && v.ratingCount >= 10;
+
+/// Image card used in vertical lists (explore, category).
 class VenueCard extends StatelessWidget {
   const VenueCard({super.key, required this.venue, required this.onTap});
 
@@ -178,7 +236,6 @@ class VenueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final where = joinLocation(venue.addressLine, venue.cityName);
     return Semantics(
       button: true,
       label: venue.name,
@@ -187,57 +244,44 @@ class VenueCard extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         child: Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(Radii.card),
-            border: Border.all(color: Theme.of(context).colorScheme.outline),
+            border: Border.all(color: theme.colorScheme.outline),
+            boxShadow: Shadows.card,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Stack(
                 children: [
-                  ZNetworkImage(
-                    url: venue.coverImageUrl,
-                    aspectRatio: 16 / 9,
-                    borderRadius: Radii.card,
-                    semanticLabel: venue.name,
-                  ),
+                  ZNetworkImage(url: venue.coverImageUrl, aspectRatio: 16 / 8.5, borderRadius: Radii.card, semanticLabel: venue.name),
                   Positioned(top: 10, right: 10, child: FavoriteButton(venue: venue)),
-                  if (venue.distanceKm != null)
-                    Positioned(
-                      left: 10,
-                      bottom: 10,
-                      child: _Pill(label: formatDistance(venue.distanceKm!), icon: Icons.near_me_rounded),
-                    ),
+                  if (isTopRated(venue)) const Positioned(left: 10, bottom: 10, child: _TopRatedTag()),
                 ],
               ),
               Padding(
-                padding: const EdgeInsets.all(Gap.md + 2),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(venue.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ),
+                        Expanded(child: Text(venue.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
                         const SizedBox(width: 8),
-                        RatingBadge(venue: venue),
+                        PricePill(venue: venue),
                       ],
                     ),
-                    if (where.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.place_outlined, size: 15, color: ZuruvColors.textSecondary),
-                          const SizedBox(width: 4),
-                          Expanded(child: Text(where, style: theme.textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                        ],
+                    const SizedBox(height: 6),
+                    VenueMetaLine(venue: venue),
+                    if (venue.categories.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 26,
+                        child: ClipRect(
+                          child: Wrap(spacing: 6, children: [for (final c in venue.categories.take(3)) _SportChip(label: c)]),
+                        ),
                       ),
                     ],
-                    const SizedBox(height: 8),
-                    PriceLabel(venue: venue),
                   ],
                 ),
               ),
@@ -245,6 +289,76 @@ class VenueCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Compact horizontal card (thumbnail left) used on the Favorites screen.
+class VenueRowCard extends StatelessWidget {
+  const VenueRowCard({super.key, required this.venue, required this.onTap});
+
+  final VenueSummary venue;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Semantics(
+      button: true,
+      label: venue.name,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(Radii.card),
+            border: Border.all(color: theme.colorScheme.outline),
+            boxShadow: Shadows.card,
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 104,
+                child: ZNetworkImage(url: venue.coverImageUrl, aspectRatio: 1.1, borderRadius: 14, semanticLabel: venue.name),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: Text(venue.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        FavoriteButton(venue: venue, size: 30, plain: true),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    VenueMetaLine(venue: venue, showSport: false),
+                    const SizedBox(height: 10),
+                    PricePill(venue: venue),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopRatedTag extends StatelessWidget {
+  const _TopRatedTag();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: theme.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(12)),
+      child: Text('Top Rated', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: theme.colorScheme.primary)),
     );
   }
 }
@@ -267,8 +381,9 @@ class VenueCarouselCard extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         child: Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(Radii.card),
+            border: Border.all(color: theme.colorScheme.outline),
             boxShadow: Shadows.card,
           ),
           child: Column(
@@ -276,11 +391,9 @@ class VenueCarouselCard extends StatelessWidget {
             children: [
               Stack(
                 children: [
-                  ZNetworkImage(url: venue.coverImageUrl, aspectRatio: 16 / 10, borderRadius: Radii.image, semanticLabel: venue.name),
+                  ZNetworkImage(url: venue.coverImageUrl, aspectRatio: 16 / 9, borderRadius: Radii.image, semanticLabel: venue.name),
                   Positioned(top: 8, right: 8, child: FavoriteButton(venue: venue, size: 32)),
-                  Positioned(left: 8, bottom: 8, child: _RatingPill(venue: venue)),
-                  if (venue.distanceKm != null)
-                    Positioned(right: 8, bottom: 8, child: _Pill(label: formatDistance(venue.distanceKm!), icon: Icons.near_me_rounded)),
+                  if (isTopRated(venue)) const Positioned(left: 8, bottom: 8, child: _TopRatedTag()),
                 ],
               ),
               Padding(
@@ -288,65 +401,21 @@ class VenueCarouselCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(venue.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.place_outlined, size: 14, color: ZuruvColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            joinLocation(null, venue.addressLine ?? venue.cityName),
-                            style: theme.textTheme.bodySmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
+                        Expanded(child: Text(venue.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        const SizedBox(width: 6),
+                        PricePill(venue: venue),
                       ],
                     ),
-                    if (venue.categories.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 26,
-                        child: ClipRect(
-                          child: Wrap(
-                            spacing: 6,
-                            children: [for (final c in venue.categories.take(2)) _SportChip(label: c)],
-                          ),
-                        ),
-                      ),
-                    ],
+                    const SizedBox(height: 6),
+                    VenueMetaLine(venue: venue),
                   ],
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _RatingPill extends StatelessWidget {
-  const _RatingPill({required this.venue});
-  final VenueSummary venue;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.95), borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFFB400)),
-          const SizedBox(width: 3),
-          Text(
-            venue.hasRating ? formatRating(venue.ratingAvg!) : 'New',
-            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
-          ),
-        ],
       ),
     );
   }
@@ -364,28 +433,6 @@ class _SportChip extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.primary),
-      ),
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  const _Pill({required this.label, required this.icon});
-  final String label;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-        ],
       ),
     );
   }

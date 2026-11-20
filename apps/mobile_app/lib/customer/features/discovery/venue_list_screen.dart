@@ -183,7 +183,7 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         leading: canPop ? IconButton(onPressed: () => context.pop(), icon: const Icon(Icons.arrow_back_rounded)) : null,
-        title: Text(widget.title, style: theme.textTheme.titleLarge),
+        title: Text(widget.title, style: theme.textTheme.headlineMedium?.copyWith(fontSize: 26)),
         actions: [
           IconButton(
             tooltip: 'Map view',
@@ -192,8 +192,15 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
           ),
           TextButton.icon(
             onPressed: () => showCitySheet(context),
-            icon: const Icon(Icons.place_outlined, size: 18),
-            label: Text(location.city?.name ?? 'City'),
+            icon: const Icon(Icons.place_rounded, size: 18),
+            label: Row(mainAxisSize: MainAxisSize.min, children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 96),
+                child: Text(location.city?.name ?? 'City', maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+            ]),
+            style: TextButton.styleFrom(textStyle: const TextStyle(fontWeight: FontWeight.w700)),
           ),
           const SizedBox(width: 4),
         ],
@@ -256,13 +263,22 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
                   label: Text(_priceLabel),
                   selected: _minPrice != null || _maxPrice != null,
                   onSelected: (_) => _pickPrice(),
+                  deleteIcon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                  deleteButtonTooltipMessage: 'Price',
+                  onDeleted: _pickPrice,
                 ),
                 const SizedBox(width: 8),
-                FilterChip(
-                  avatar: const Icon(Icons.tune_rounded, size: 16),
-                  label: const Text('More'),
-                  selected: moreActive,
-                  onSelected: (_) => _pickMore(),
+                Tooltip(
+                  message: 'More filters',
+                  child: Material(
+                    color: moreActive ? theme.colorScheme.primaryContainer : theme.colorScheme.surface,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: theme.colorScheme.outline)),
+                    child: InkWell(
+                      customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onTap: _pickMore,
+                      child: SizedBox(width: 44, child: Icon(Icons.tune_rounded, size: 20, color: theme.colorScheme.primary)),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -276,6 +292,14 @@ class _VenueListScreenState extends ConsumerState<VenueListScreen> {
                   label: Text(categories.where((c) => c.slug == _category).map((c) => c.name).firstOrNull ?? _category!),
                   onDeleted: () => setState(() => _category = null),
                 ),
+              ),
+            ),
+          if (!state.loading && state.error == null && state.items.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Gap.page, 12, Gap.page, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('${state.items.length}${state.hasMore ? '+' : ''} venues found', style: theme.textTheme.bodySmall),
               ),
             ),
           const SizedBox(height: 8),

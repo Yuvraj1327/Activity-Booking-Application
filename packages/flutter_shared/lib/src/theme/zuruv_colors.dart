@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 class ZuruvColors {
   const ZuruvColors._();
 
-  static const Color customerPrimary = Color(0xFF442EDB);
+  static const Color customerPrimary = Color(0xFF0B4FD8);
+  static const Color customerTint = Color(0xFFEAF2FF);
+  static const Color customerBorder = Color(0xFFE0E8F6);
   static const Color ownerPrimary = Color(0xFF4B2AF9);
   static const Color primaryTint = Color(0xFFF5F1FF);
 

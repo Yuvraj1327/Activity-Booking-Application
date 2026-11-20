@@ -41,3 +41,4 @@ flutter:
     - .env
     - assets/images/
     - assets/images/onboarding/
+    - assets/icons/sports/

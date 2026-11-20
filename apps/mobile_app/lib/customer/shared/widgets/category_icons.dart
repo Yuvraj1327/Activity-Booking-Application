@@ -1,7 +1,37 @@
 import 'package:flutter/material.dart';
 
-/// Maps the API's `icon_key` (falling back to the slug) to a Material icon. These are stand-ins
-/// until the design team supplies a branded icon set; unknown keys get a generic sports icon.
+/// Sports that have a branded icon in `assets/icons/sports/` (keys match the API's `icon_key`).
+const _sportAssets = {
+  'cricket', 'football', 'badminton', 'tennis', 'basketball', 'volleyball', 'table_tennis', 'hockey',
+  'squash', 'swimming', 'gym', 'running', 'yoga', 'golf', 'boxing',
+};
+
+/// Asset path of the branded icon for a category, or null when none exists (e.g. snooker).
+String? sportIconAsset(String? iconKey, {String? slug}) {
+  final key = (iconKey ?? slug)?.replaceAll('-', '_');
+  return key != null && _sportAssets.contains(key) ? 'assets/icons/sports/$key.png' : null;
+}
+
+/// The sport's branded icon, or a Material icon for sports without one.
+class SportIcon extends StatelessWidget {
+  const SportIcon({super.key, this.iconKey, this.slug, this.size = 34, this.color});
+
+  final String? iconKey;
+  final String? slug;
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = sportIconAsset(iconKey, slug: slug);
+    if (asset == null) {
+      return Icon(categoryIcon(iconKey, slug: slug), size: size, color: color ?? Theme.of(context).colorScheme.primary);
+    }
+    return Image.asset(asset, width: size, height: size, fit: BoxFit.contain, excludeFromSemantics: true);
+  }
+}
+
+/// Material fallback for sports that have no branded icon; unknown keys get a generic sports icon.
 IconData categoryIcon(String? iconKey, {String? slug}) {
   switch (iconKey ?? slug) {
     case 'badminton':
@@ -24,6 +54,16 @@ IconData categoryIcon(String? iconKey, {String? slug}) {
     case 'table_tennis':
     case 'table-tennis':
       return Icons.sports_handball_rounded;
+    case 'volleyball':
+      return Icons.sports_volleyball_rounded;
+    case 'hockey':
+      return Icons.sports_hockey_rounded;
+    case 'golf':
+      return Icons.sports_golf_rounded;
+    case 'boxing':
+      return Icons.sports_mma_rounded;
+    case 'running':
+      return Icons.directions_run_rounded;
     case 'snooker':
       return Icons.sports_bar_rounded;
     default:

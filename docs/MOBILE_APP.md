@@ -140,7 +140,7 @@ Entry: **Profile > Settings** (`/settings` for customers, `/owner/settings` for 
 |---|---|---|
 | Profile | existing Edit profile screen: name, phone, upload / replace / **remove** photo (Supabase Storage `profile-images`); e-mail is read-only (it is the sign-in identity) | `profiles`, Storage |
 | Account | account info; change password (verifies the current password by re-authenticating, then `updateUser`); account-deletion request with cancel | Supabase Auth, `profiles.deletion_requested_at` |
-| Appearance | Light / Dark / System, applied app-wide (customer and owner themes both have a dark variant) | device (`theme_mode_v1`) |
+| Appearance | Light (default) / Dark / System, applied app-wide (customer and owner themes both have a dark variant) | device (`theme_mode_v1`) |
 | Preferences | language (en/hi); customers also: sports interests and default city | `profiles.language`, `customer_profiles.preferred_category_ids`, existing city selection |
 | Notifications | push, e-mail, bookings, payments, promotions | `notification_preferences` (enforced server side) |
 | Privacy & security | location permission status + open phone settings; this device's session; sign out of this device / **all devices** (Supabase global sign-out); privacy policy | Supabase Auth |

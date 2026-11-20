@@ -75,13 +75,13 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(Gap.page, 8, Gap.page, 24),
               itemCount: items.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              separatorBuilder: (_, __) => const SizedBox(height: 14),
               itemBuilder: (context, i) {
                 if (i == items.length) {
                   return ListFooter(loading: state.loadingMore, error: state.loadMoreError != null, onRetry: controller.loadMore);
                 }
                 final venue = items[i];
-                return VenueCard(venue: venue, onTap: () => context.push('/venues/${venue.id}'));
+                return VenueRowCard(venue: venue, onTap: () => context.push('/venues/${venue.id}'));
               },
             ),
           ),

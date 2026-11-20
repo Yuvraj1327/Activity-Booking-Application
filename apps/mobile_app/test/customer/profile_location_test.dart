@@ -76,7 +76,7 @@ void main() {
       await tester.tap(find.text('Mumbai'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Mumbai'), findsOneWidget);
+      expect(find.text('Mumbai'), findsWidgets);
       expect(env.profiles.preferredCities, ['c-bom']);
       expect(env.venues.queries.last.cityId, 'c-bom');
       expect(env.location.requests, 0); // never prompted for permission

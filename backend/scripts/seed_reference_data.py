@@ -15,17 +15,22 @@ import asyncpg
 
 from app.core.config import get_settings
 
-CATEGORIES = [  # slug, name, icon_key
-    ("badminton", "Badminton", "badminton"),
-    ("tennis", "Tennis", "tennis"),
-    ("swimming", "Swimming", "swimming"),
-    ("gym", "Gym", "gym"),
-    ("yoga", "Yoga", "yoga"),
+CATEGORIES = [  # slug, name, icon_key (order = display order; icon_key picks the app's sport icon)
     ("cricket", "Cricket", "cricket"),
     ("football", "Football", "football"),
+    ("badminton", "Badminton", "badminton"),
+    ("tennis", "Tennis", "tennis"),
     ("basketball", "Basketball", "basketball"),
+    ("volleyball", "Volleyball", "volleyball"),
     ("table-tennis", "Table Tennis", "table_tennis"),
+    ("hockey", "Hockey", "hockey"),
     ("squash", "Squash", "squash"),
+    ("swimming", "Swimming", "swimming"),
+    ("gym", "Gym", "gym"),
+    ("running", "Running", "running"),
+    ("yoga", "Yoga", "yoga"),
+    ("golf", "Golf", "golf"),
+    ("boxing", "Boxing", "boxing"),
     ("snooker", "Snooker", "snooker"),
     ("pickleball", "Pickleball", "pickleball"),
 ]

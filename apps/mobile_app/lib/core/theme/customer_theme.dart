@@ -8,12 +8,17 @@ import 'package:zuruv/core/constants/tokens.dart';
 ThemeData buildCustomerTheme({Brightness brightness = Brightness.light}) {
   final dark = brightness == Brightness.dark;
   final surface = dark ? ZuruvColors.darkSurface : Colors.white;
-  final tint = dark ? ZuruvColors.darkPrimaryTint : ZuruvColors.primaryTint;
+  final tint = dark ? ZuruvColors.darkPrimaryTint : ZuruvColors.customerTint;
   final muted = dark ? ZuruvColors.darkTextSecondary : ZuruvColors.textSecondary;
-  final line = dark ? ZuruvColors.darkBorder : ZuruvColors.border;
+  final line = dark ? ZuruvColors.darkBorder : ZuruvColors.customerBorder;
   final ink = dark ? ZuruvColors.darkText : ZuruvColors.text;
   const primary = ZuruvColors.customerPrimary;
-  final base = buildZuruvTheme(primary: primary, brightness: brightness);
+  final base = buildZuruvTheme(
+    primary: primary,
+    brightness: brightness,
+    lightTint: ZuruvColors.customerTint,
+    lightBorder: ZuruvColors.customerBorder,
+  );
   final accent = base.colorScheme.primary;
   return base.copyWith(
     navigationBarTheme: NavigationBarThemeData(

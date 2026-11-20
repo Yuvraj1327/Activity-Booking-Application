@@ -4,7 +4,7 @@ import 'package:flutter_shared/flutter_shared.dart';
 
 import 'package:zuruv/core/storage/preferences.dart';
 
-/// Light / Dark / System appearance. Kept on the device (it is a per-phone choice) and restored
+/// Light / Dark / System appearance. Light is the default until the user picks something else. Kept on the device (it is a per-phone choice) and restored
 /// at start-up before the first frame, so there is no flash of the wrong theme.
 class ThemeModeController extends Notifier<ThemeMode> {
   static const _key = 'theme_mode_v1';
@@ -12,7 +12,7 @@ class ThemeModeController extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
     final saved = ref.read(sharedPreferencesProvider).getString(_key);
-    return ThemeMode.values.firstWhere((m) => m.name == saved, orElse: () => ThemeMode.system);
+    return ThemeMode.values.firstWhere((m) => m.name == saved, orElse: () => ThemeMode.light);
   }
 
   Future<void> set(ThemeMode mode) async {

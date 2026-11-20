@@ -21,7 +21,7 @@ Run them **in this order, each one once, on a fresh project**:
 | 9 | `migrations/009_admin_and_audit.sql` | `audit_logs` (append-only) and the admin dashboard indexes |
 | 10 | `migrations/010_rls_storage_policies.sql` | Row Level Security on all 27 tables, API-role grants, 34 table policies, Storage buckets + policies, Alembic version stamp (`0009`, advanced to `0010` by 011) |
 | 10b | `migrations/011_settings.sql` | Settings: notification type switches, profile language + deletion request, customer sport interests, `support_tickets`; bumps the Alembic stamp to `0010` |
-| 11 | `seed.sql` | Reference data only: 12 categories, 12 amenities, 10 cities (optional but the apps need categories/cities to be useful) |
+| 11 | `seed.sql` | Reference data only: 17 categories (the 15 sports with icons in the app plus snooker and pickleball), 12 amenities, 10 cities (optional but the apps need categories/cities to be useful) |
 
 27 application tables in total (the 28th table in the database is `alembic_version`).
 

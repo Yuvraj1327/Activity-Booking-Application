@@ -27,15 +27,20 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final auth = ref.watch(authControllerProvider);
-    final firstName = auth is Authenticated ? auth.profile.fullName.split(' ').first : '';
+    final firstName =
+        auth is Authenticated ? auth.profile.fullName.split(' ').first : '';
     final city = ref.watch(locationControllerProvider.select((s) => s.city));
     final popularQuery = ref.watch(homePopularQueryProvider);
 
     Future<void> refresh() async {
       ref.invalidate(categoriesProvider);
-      await ref.read(venueListControllerProvider(popularQuery).notifier).refresh();
+      await ref
+          .read(venueListControllerProvider(popularQuery).notifier)
+          .refresh();
       final nearby = ref.read(homeNearbyQueryProvider);
-      if (nearby != null) await ref.read(venueListControllerProvider(nearby).notifier).refresh();
+      if (nearby != null) {
+        await ref.read(venueListControllerProvider(nearby).notifier).refresh();
+      }
     }
 
     return Scaffold(
@@ -47,7 +52,8 @@ class HomeScreen extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: 24),
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(Gap.page, 12, Gap.page - 6, 0),
+                padding:
+                    const EdgeInsets.fromLTRB(Gap.page, 12, Gap.page - 6, 0),
                 child: Row(
                   children: [
                     Expanded(
@@ -57,11 +63,13 @@ class HomeScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(12),
                           onTap: () => showCitySheet(context),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 6, horizontal: 2),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.place_rounded, size: 20, color: theme.colorScheme.primary),
+                                Icon(Icons.place_rounded,
+                                    size: 20, color: theme.colorScheme.primary),
                                 const SizedBox(width: 6),
                                 Flexible(
                                   child: Text(
@@ -82,8 +90,11 @@ class HomeScreen extends ConsumerWidget {
                       onPressed: () => context.push('/notifications'),
                       icon: Badge(
                         smallSize: 9,
-                        isLabelVisible: (ref.watch(unreadCountProvider).valueOrNull ?? 0) > 0,
-                        child: const Icon(Icons.notifications_none_rounded, size: 28),
+                        isLabelVisible:
+                            (ref.watch(unreadCountProvider).valueOrNull ?? 0) >
+                                0,
+                        child: const Icon(Icons.notifications_none_rounded,
+                            size: 28),
                       ),
                     ),
                   ],
@@ -94,9 +105,13 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(firstName.isEmpty ? 'Hi Player,' : 'Hi $firstName,', style: theme.textTheme.headlineMedium),
+                    Text(
+                        firstName.isEmpty ? 'Hi Player 👋' : 'Hi $firstName 👋',
+                        style: theme.textTheme.headlineMedium),
                     const SizedBox(height: 4),
-                    Text('Find and book sports venues near you.', style: theme.textTheme.bodyMedium?.copyWith(color: ZuruvColors.textSecondary)),
+                    Text('Find and book sports venues near you.',
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(color: ZuruvColors.textSecondary)),
                   ],
                 ),
               ),
@@ -116,9 +131,15 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               _MapPreview(query: popularQuery),
               const SizedBox(height: 24),
-              SectionHeader(title: 'Popular venues', onSeeAll: () => context.go('/explore')),
+              SectionHeader(
+                  title: 'Popular venues',
+                  onSeeAll: () => context.go('/explore')),
               const SizedBox(height: 8),
-              _VenueCarousel(query: popularQuery, emptyMessage: city == null ? 'No venues are listed yet.' : 'No venues in ${city.name} yet.'),
+              _VenueCarousel(
+                  query: popularQuery,
+                  emptyMessage: city == null
+                      ? 'No venues are listed yet.'
+                      : 'No venues in ${city.name} yet.'),
               const SizedBox(height: 24),
               const _NearbySection(),
             ],
@@ -150,12 +171,20 @@ class _SearchBarButton extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.search_rounded, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.search_rounded,
+                  color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 10),
               Expanded(
-                child: Text('Search venues, sports or areas', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: ZuruvColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                child: Text('Search venues, sports or areas',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: ZuruvColors.textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
-              Icon(Icons.tune_rounded, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.tune_rounded,
+                  color: Theme.of(context).colorScheme.primary),
             ],
           ),
         ),
@@ -180,8 +209,9 @@ class _PromoBanner extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(Radii.sheet - 4),
             child: AspectRatio(
-              aspectRatio: 1983 / 467,
-              child: Image.asset('assets/images/home_banner.png', fit: BoxFit.cover),
+              aspectRatio: 1677 / 737,
+              child: Image.asset('assets/images/home_banner.png',
+                  fit: BoxFit.cover),
             ),
           ),
         ),
@@ -204,8 +234,12 @@ class _CategoryRow extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: Gap.page),
         child: Row(
           children: [
-            Expanded(child: Text(errorMessage(e), style: Theme.of(context).textTheme.bodySmall)),
-            TextButton(onPressed: () => ref.invalidate(categoriesProvider), child: const Text('Retry')),
+            Expanded(
+                child: Text(errorMessage(e),
+                    style: Theme.of(context).textTheme.bodySmall)),
+            TextButton(
+                onPressed: () => ref.invalidate(categoriesProvider),
+                child: const Text('Retry')),
           ],
         ),
       ),
@@ -216,13 +250,14 @@ class _CategoryRow extends ConsumerWidget {
         final tiles = <Widget>[
           for (final c in shown)
             _CategoryTile(
-              icon: categoryIcon(c.iconKey, slug: c.slug),
+              icon: SportIcon(iconKey: c.iconKey, slug: c.slug, size: 34),
               label: c.name,
               onTap: () => context.push('/category/${c.slug}'),
             ),
           if (hasMore)
             _CategoryTile(
-              icon: Icons.grid_view_rounded,
+              icon: Icon(Icons.apps_rounded,
+                  size: 30, color: Theme.of(context).colorScheme.primary),
               label: 'More',
               onTap: () => _showAllCategories(context, list),
             ),
@@ -252,7 +287,8 @@ class _CategoryRow extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('All sports', style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text('All sports',
+                style: Theme.of(sheetContext).textTheme.titleLarge),
             const SizedBox(height: 16),
             Flexible(
               child: GridView.count(
@@ -264,7 +300,8 @@ class _CategoryRow extends ConsumerWidget {
                 children: [
                   for (final c in all)
                     _CategoryTile(
-                      icon: categoryIcon(c.iconKey, slug: c.slug),
+                      icon:
+                          SportIcon(iconKey: c.iconKey, slug: c.slug, size: 34),
                       label: c.name,
                       onTap: () {
                         Navigator.of(sheetContext).pop();
@@ -293,7 +330,11 @@ class _MapPreview extends ConsumerWidget {
     final theme = Theme.of(context);
     final available = ref.watch(mapsAvailableProvider);
     final location = ref.watch(locationControllerProvider);
-    final venues = ref.watch(venueListControllerProvider(query)).items.where((v) => v.latitude != null && v.longitude != null).toList();
+    final venues = ref
+        .watch(venueListControllerProvider(query))
+        .items
+        .where((v) => v.latitude != null && v.longitude != null)
+        .toList();
     final center = location.point != null
         ? LatLng(location.point!.lat, location.point!.lng)
         : venues.isNotEmpty
@@ -312,11 +353,15 @@ class _MapPreview extends ConsumerWidget {
                 child: available
                     ? IgnorePointer(
                         child: GoogleMap(
-                          key: ValueKey('${center.latitude},${center.longitude},${venues.length}'),
-                          initialCameraPosition: CameraPosition(target: center, zoom: 11.5),
+                          key: ValueKey(
+                              '${center.latitude},${center.longitude},${venues.length}'),
+                          initialCameraPosition:
+                              CameraPosition(target: center, zoom: 11.5),
                           markers: {
                             for (final v in venues)
-                              Marker(markerId: MarkerId(v.id), position: LatLng(v.latitude!, v.longitude!)),
+                              Marker(
+                                  markerId: MarkerId(v.id),
+                                  position: LatLng(v.latitude!, v.longitude!)),
                           },
                           myLocationEnabled: false,
                           myLocationButtonEnabled: false,
@@ -327,9 +372,36 @@ class _MapPreview extends ConsumerWidget {
                       )
                     : Container(
                         color: Theme.of(context).colorScheme.primaryContainer,
-                        child: Center(child: Icon(Icons.map_outlined, size: 44, color: theme.colorScheme.primary.withValues(alpha: 0.4))),
+                        child: Center(
+                            child: Icon(Icons.map_outlined,
+                                size: 44,
+                                color: theme.colorScheme.primary
+                                    .withValues(alpha: 0.4))),
                       ),
               ),
+              if (location.city != null)
+                Positioned(
+                  left: 16,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: Row(children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            shape: BoxShape.circle,
+                            boxShadow: Shadows.card),
+                        child: Icon(Icons.place_rounded,
+                            size: 18, color: theme.colorScheme.primary),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(location.city!.name,
+                          style: theme.textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w800)),
+                    ]),
+                  ),
+                ),
               Positioned(
                 right: 12,
                 bottom: 12,
@@ -339,15 +411,22 @@ class _MapPreview extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(22),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(22),
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => VenuesMapScreen(query: query))),
+                    onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                            builder: (_) => VenuesMapScreen(query: query))),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('View on Map', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w700)),
+                          Text('View on Map',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w700)),
                           const SizedBox(width: 4),
-                          Icon(Icons.north_east_rounded, size: 16, color: theme.colorScheme.primary),
+                          Icon(Icons.north_east_rounded,
+                              size: 16, color: theme.colorScheme.primary),
                         ],
                       ),
                     ),
@@ -363,8 +442,9 @@ class _MapPreview extends ConsumerWidget {
 }
 
 class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.icon, required this.label, required this.onTap});
-  final IconData icon;
+  const _CategoryTile(
+      {required this.icon, required this.label, required this.onTap});
+  final Widget icon;
   final String label;
   final VoidCallback onTap;
 
@@ -383,11 +463,23 @@ class _CategoryTile extends StatelessWidget {
             Container(
               width: 60,
               height: 60,
-              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)),
-              child: Icon(icon, color: theme.colorScheme.primary, size: 28),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: theme.colorScheme.outline),
+                boxShadow: Shadows.card,
+              ),
+              alignment: Alignment.center,
+              child: icon,
             ),
             const SizedBox(height: 8),
-            Text(label, style: theme.textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+            Text(label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w500),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center),
           ],
         ),
       ),
@@ -410,7 +502,11 @@ class _CategorySkeleton extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (_, __) => const SizedBox(
           width: 68,
-          child: Column(children: [ShimmerBox(height: 60, width: 60, radius: 20), SizedBox(height: 8), ShimmerBox(height: 10, width: 44, radius: 5)]),
+          child: Column(children: [
+            ShimmerBox(height: 60, width: 60, radius: 20),
+            SizedBox(height: 8),
+            ShimmerBox(height: 10, width: 44, radius: 5)
+          ]),
         ),
       ),
     );
@@ -436,7 +532,8 @@ class _VenueCarousel extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: Gap.page),
           itemCount: 3,
           separatorBuilder: (_, __) => const SizedBox(width: 14),
-          itemBuilder: (_, __) => const SizedBox(width: 232, child: VenueCardSkeleton()),
+          itemBuilder: (_, __) =>
+              const SizedBox(width: 232, child: VenueCardSkeleton()),
         ),
       );
     }
@@ -461,7 +558,8 @@ class _VenueCarousel extends ConsumerWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (context, i) {
           final venue = state.items[i];
-          return VenueCarouselCard(venue: venue, onTap: () => context.push('/venues/${venue.id}'));
+          return VenueCarouselCard(
+              venue: venue, onTap: () => context.push('/venues/${venue.id}'));
         },
       ),
     );
@@ -482,10 +580,13 @@ class _NearbySection extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: Gap.page),
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(Radii.card)),
+          decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(Radii.card)),
           child: Row(
             children: [
-              Icon(Icons.near_me_rounded, color: theme.colorScheme.primary, size: 28),
+              Icon(Icons.near_me_rounded,
+                  color: theme.colorScheme.primary, size: 28),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -493,16 +594,26 @@ class _NearbySection extends ConsumerWidget {
                   children: [
                     Text('Venues near you', style: theme.textTheme.titleMedium),
                     const SizedBox(height: 2),
-                    Text('Share your location to see the closest venues. Optional.', style: theme.textTheme.bodySmall),
+                    Text(
+                        'Share your location to see the closest venues. Optional.',
+                        style: theme.textTheme.bodySmall),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
               FilledButton(
-                style: FilledButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 14)),
-                onPressed: location.locating ? null : () => enableLocation(context, ref),
+                style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 14)),
+                onPressed: location.locating
+                    ? null
+                    : () => enableLocation(context, ref),
                 child: location.locating
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
                     : const Text('Enable'),
               ),
             ],
@@ -513,11 +624,15 @@ class _NearbySection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(title: 'Nearby venues', onSeeAll: () => context.go('/explore')),
+        SectionHeader(
+            title: 'Nearby venues', onSeeAll: () => context.go('/explore')),
         const SizedBox(height: 8),
         const _DistanceChips(),
         const SizedBox(height: 14),
-        _VenueCarousel(query: nearbyQuery, emptyMessage: 'No venues within ${nearbyQuery.radiusKm?.round() ?? 5} km of you yet.'),
+        _VenueCarousel(
+            query: nearbyQuery,
+            emptyMessage:
+                'No venues within ${nearbyQuery.radiusKm?.round() ?? 5} km of you yet.'),
       ],
     );
   }
@@ -526,7 +641,11 @@ class _NearbySection extends ConsumerWidget {
 class _DistanceChips extends ConsumerWidget {
   const _DistanceChips();
 
-  static const _options = <(String, double)>[('Within 5 km', 5), ('5 – 10 km', 10), ('10 – 25 km', 25)];
+  static const _options = <(String, double)>[
+    ('Within 5 km', 5),
+    ('5 – 10 km', 10),
+    ('10 – 25 km', 25)
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -548,8 +667,13 @@ class _DistanceChips extends ConsumerWidget {
                 selectedColor: theme.colorScheme.primary,
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                 side: BorderSide.none,
-                labelStyle: TextStyle(fontWeight: FontWeight.w600, color: selected == km ? Colors.white : ZuruvColors.textSecondary),
-                onSelected: (_) => ref.read(homeNearbyRadiusProvider.notifier).state = km,
+                labelStyle: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: selected == km
+                        ? Colors.white
+                        : ZuruvColors.textSecondary),
+                onSelected: (_) =>
+                    ref.read(homeNearbyRadiusProvider.notifier).state = km,
               ),
             ),
           TextButton.icon(
@@ -562,7 +686,8 @@ class _DistanceChips extends ConsumerWidget {
     );
   }
 
-  Future<void> _setDistance(BuildContext context, WidgetRef ref, double current) async {
+  Future<void> _setDistance(
+      BuildContext context, WidgetRef ref, double current) async {
     var value = current.clamp(1, 50).toDouble();
     final result = await showModalBottomSheet<double>(
       context: context,
@@ -573,14 +698,28 @@ class _DistanceChips extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Within ${value.round()} km', style: Theme.of(ctx).textTheme.titleLarge),
-              Slider(value: value, min: 1, max: 50, divisions: 49, label: '${value.round()} km', onChanged: (v) => setState(() => value = v)),
-              SizedBox(width: double.infinity, child: FilledButton(onPressed: () => Navigator.of(ctx).pop(value.roundToDouble()), child: const Text('Apply'))),
+              Text('Within ${value.round()} km',
+                  style: Theme.of(ctx).textTheme.titleLarge),
+              Slider(
+                  value: value,
+                  min: 1,
+                  max: 50,
+                  divisions: 49,
+                  label: '${value.round()} km',
+                  onChanged: (v) => setState(() => value = v)),
+              SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                      onPressed: () =>
+                          Navigator.of(ctx).pop(value.roundToDouble()),
+                      child: const Text('Apply'))),
             ],
           ),
         ),
       ),
     );
-    if (result != null) ref.read(homeNearbyRadiusProvider.notifier).state = result;
+    if (result != null) {
+      ref.read(homeNearbyRadiusProvider.notifier).state = result;
+    }
   }
 }

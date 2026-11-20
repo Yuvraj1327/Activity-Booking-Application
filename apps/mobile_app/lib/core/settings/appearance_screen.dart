@@ -11,9 +11,9 @@ class AppearanceScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
     const options = [
-      (ThemeMode.system, Icons.brightness_auto_rounded, 'System', 'Follow your phone\'s setting'),
       (ThemeMode.light, Icons.light_mode_outlined, 'Light', 'Always use the light theme'),
       (ThemeMode.dark, Icons.dark_mode_outlined, 'Dark', 'Always use the dark theme'),
+      (ThemeMode.system, Icons.brightness_auto_rounded, 'System', 'Follow your phone\'s setting'),
     ];
     return SettingsPage(
       title: 'Appearance',

@@ -44,7 +44,7 @@ class _BrandedSplashScreenState extends ConsumerState<BrandedSplashScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF5A44F0), ZuruvColors.customerPrimary, Color(0xFF2A1A9E)],
+            colors: [Color(0xFF3F7BF2), ZuruvColors.customerPrimary, Color(0xFF0A2E8F)],
           ),
         ),
         child: Stack(

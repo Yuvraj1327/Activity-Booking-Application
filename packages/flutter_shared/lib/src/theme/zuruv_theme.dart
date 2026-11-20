@@ -5,14 +5,19 @@ import 'zuruv_typography.dart';
 
 /// The ZURUV theme in light (default) or dark appearance. In dark mode the brand [primary] is
 /// replaced by a lighter violet so it stays readable on dark surfaces.
-ThemeData buildZuruvTheme({required Color primary, Brightness brightness = Brightness.light}) {
+ThemeData buildZuruvTheme({
+  required Color primary,
+  Brightness brightness = Brightness.light,
+  Color lightTint = ZuruvColors.primaryTint,
+  Color lightBorder = ZuruvColors.border,
+}) {
   final dark = brightness == Brightness.dark;
   if (dark) primary = ZuruvColors.darkPrimary;
   final bg = dark ? ZuruvColors.darkBackground : ZuruvColors.background;
   final surface = dark ? ZuruvColors.darkSurface : ZuruvColors.surface;
-  final border = dark ? ZuruvColors.darkBorder : ZuruvColors.border;
+  final border = dark ? ZuruvColors.darkBorder : lightBorder;
   final ink = dark ? ZuruvColors.darkText : ZuruvColors.text;
-  final tint = dark ? ZuruvColors.darkPrimaryTint : ZuruvColors.primaryTint;
+  final tint = dark ? ZuruvColors.darkPrimaryTint : lightTint;
   final muted = dark ? ZuruvColors.darkTextSecondary : ZuruvColors.textSecondary;
   final scheme = ColorScheme.fromSeed(
     seedColor: primary,

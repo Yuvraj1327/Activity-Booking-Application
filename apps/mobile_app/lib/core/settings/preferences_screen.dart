@@ -9,6 +9,7 @@ import 'package:zuruv/core/settings/settings_widgets.dart';
 import 'package:zuruv/customer/features/categories/categories_provider.dart';
 import 'package:zuruv/customer/features/location/location_controller.dart';
 import 'package:zuruv/customer/features/location/location_sheet.dart';
+import 'package:zuruv/customer/shared/widgets/category_icons.dart';
 
 final interestsProvider = FutureProvider.autoDispose<List<String>>(
   (ref) => ref.watch(settingsRepositoryProvider).interests(),
@@ -147,6 +148,7 @@ class _InterestChips extends ConsumerWidget {
       children: [
         for (final c in categories.requireValue)
           FilterChip(
+            avatar: SportIcon(iconKey: c.iconKey, slug: c.slug, size: 20),
             label: Text(c.name),
             selected: ids.contains(c.id),
             onSelected: saving ? null : (on) => onToggle(ids, c.id, on),

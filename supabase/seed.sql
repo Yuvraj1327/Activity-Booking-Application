@@ -11,18 +11,23 @@
 BEGIN;
 
 INSERT INTO public.categories (slug, name, icon_key, sort_order) VALUES
-  ('badminton', 'Badminton', 'badminton', 1),
-  ('tennis', 'Tennis', 'tennis', 2),
-  ('swimming', 'Swimming', 'swimming', 3),
-  ('gym', 'Gym', 'gym', 4),
-  ('yoga', 'Yoga', 'yoga', 5),
-  ('cricket', 'Cricket', 'cricket', 6),
-  ('football', 'Football', 'football', 7),
-  ('basketball', 'Basketball', 'basketball', 8),
-  ('table-tennis', 'Table Tennis', 'table_tennis', 9),
-  ('squash', 'Squash', 'squash', 10),
-  ('snooker', 'Snooker', 'snooker', 11),
-  ('pickleball', 'Pickleball', 'pickleball', 12)
+  ('cricket', 'Cricket', 'cricket', 1),
+  ('football', 'Football', 'football', 2),
+  ('badminton', 'Badminton', 'badminton', 3),
+  ('tennis', 'Tennis', 'tennis', 4),
+  ('basketball', 'Basketball', 'basketball', 5),
+  ('volleyball', 'Volleyball', 'volleyball', 6),
+  ('table-tennis', 'Table Tennis', 'table_tennis', 7),
+  ('hockey', 'Hockey', 'hockey', 8),
+  ('squash', 'Squash', 'squash', 9),
+  ('swimming', 'Swimming', 'swimming', 10),
+  ('gym', 'Gym', 'gym', 11),
+  ('running', 'Running', 'running', 12),
+  ('yoga', 'Yoga', 'yoga', 13),
+  ('golf', 'Golf', 'golf', 14),
+  ('boxing', 'Boxing', 'boxing', 15),
+  ('snooker', 'Snooker', 'snooker', 16),
+  ('pickleball', 'Pickleball', 'pickleball', 17)
 ON CONFLICT (slug) DO UPDATE SET
   name = EXCLUDED.name, icon_key = EXCLUDED.icon_key, sort_order = EXCLUDED.sort_order;
 

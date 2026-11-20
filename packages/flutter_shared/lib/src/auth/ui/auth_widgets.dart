@@ -52,9 +52,7 @@ class AuthScaffold extends ConsumerWidget {
                   children: [
                     if (!showBack) ...[
                       if (bg != null)
-                        // The background artwork already carries the ZURUV logo; centered at the top; keep clear of it.
-                        SizedBox(
-                            height: MediaQuery.sizeOf(context).height * 0.12)
+                        const SizedBox.shrink()
                       else if (logo != null)
                         Align(
                           alignment: Alignment.centerLeft,
@@ -67,6 +65,16 @@ class AuthScaffold extends ConsumerWidget {
                                 ?.copyWith(color: theme.colorScheme.primary)),
                       const SizedBox(height: 24),
                     ],
+                    // The background artwork already carries the ZURUV logo, centred near the top
+                    // (about 17% down): start the content below it on every screen, with or without
+                    // a back button.
+                    if (bg != null)
+                      SizedBox(
+                        height: (MediaQuery.sizeOf(context).height * 0.17 -
+                                MediaQuery.paddingOf(context).top -
+                                24)
+                            .clamp(8.0, 400.0),
+                      ),
                     Text(title, style: theme.textTheme.headlineMedium),
                     if (subtitle != null) ...[
                       const SizedBox(height: 8),

@@ -16,21 +16,79 @@ import 'package:zuruv/customer/features/booking/booking_providers.dart';
 class BookingsScreen extends StatelessWidget {
   const BookingsScreen({super.key});
 
+  static const _tabs = ['Upcoming', 'Past', 'Cancelled'];
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('My Bookings', style: Theme.of(context).textTheme.titleLarge),
-          bottom: const TabBar(tabs: [Tab(text: 'Upcoming'), Tab(text: 'Past'), Tab(text: 'Cancelled')]),
+        appBar: AppBar(title: Text('My Bookings', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 26))),
+        body: const Column(
+          children: [
+            _PillTabs(labels: _tabs),
+            Expanded(
+              child: TabBarView(children: [
+                BookingList(bucket: 'upcoming'),
+                BookingList(bucket: 'past'),
+                BookingList(bucket: 'cancelled'),
+              ]),
+            ),
+          ],
         ),
-        body: const TabBarView(children: [
-          BookingList(bucket: 'upcoming'),
-          BookingList(bucket: 'past'),
-          BookingList(bucket: 'cancelled'),
-        ]),
       ),
+    );
+  }
+}
+
+/// Rounded pill switcher bound to the surrounding [DefaultTabController].
+class _PillTabs extends StatelessWidget {
+  const _PillTabs({required this.labels});
+
+  final List<String> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = DefaultTabController.of(context);
+    final theme = Theme.of(context);
+    return AnimatedBuilder(
+      animation: controller.animation!,
+      builder: (context, _) {
+        final selected = controller.index;
+        return SizedBox(
+          height: 52,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: Gap.page, vertical: 6),
+            itemCount: labels.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (_, i) {
+              final on = i == selected;
+              return Semantics(
+                button: true,
+                selected: on,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => controller.animateTo(i),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: on ? theme.colorScheme.primary : theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: on ? theme.colorScheme.primary : theme.colorScheme.outline),
+                    ),
+                    child: Text(
+                      labels[i],
+                      style: TextStyle(fontWeight: FontWeight.w600, color: on ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -160,25 +218,54 @@ class BookingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    final muted = theme.colorScheme.onSurfaceVariant;
+    Widget line(IconData icon, String text) => Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(children: [
+            Icon(icon, size: 15, color: muted),
+            const SizedBox(width: 6),
+            Expanded(child: Text(text, style: theme.textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis)),
+          ]),
+        );
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(Radii.card),
+        border: Border.all(color: theme.colorScheme.outline),
+        boxShadow: Shadows.card,
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(Radii.card),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(Gap.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.all(12),
+          child: Row(
             children: [
-              Row(children: [
-                Expanded(child: Text(booking.venueName, style: theme.textTheme.titleMedium)),
-                StatusChip(booking: booking),
-              ]),
-              const SizedBox(height: 4),
-              Text(booking.resourceName, style: theme.textTheme.bodySmall),
-              const SizedBox(height: Gap.sm),
-              Text('${prettyDate(booking.bookingDate)} · ${booking.localStart}–${booking.localEnd}', style: theme.textTheme.bodyMedium),
-              const SizedBox(height: 4),
-              Text(formatMoney(booking.totalAmountPaise, currency: booking.currency), style: theme.textTheme.titleSmall),
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(color: theme.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(14)),
+                child: Icon(Icons.sports_score_rounded, size: 32, color: theme.colorScheme.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(booking.venueName, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    line(Icons.sports_rounded, booking.resourceName),
+                    line(Icons.calendar_today_outlined, prettyDate(booking.bookingDate)),
+                    line(Icons.schedule_rounded, '${booking.localStart} – ${booking.localEnd}'),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      StatusChip(booking: booking),
+                      const SizedBox(width: 8),
+                      Text(formatMoney(booking.totalAmountPaise, currency: booking.currency), style: theme.textTheme.titleSmall),
+                    ]),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: muted),
             ],
           ),
         ),
