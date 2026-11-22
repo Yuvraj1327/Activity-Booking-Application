@@ -1,12 +1,12 @@
 """Admin: refunds, booking intervention and disputes (finance configuration is added below)."""
 
-from datetime import date
-from typing import Annotated, Literal
+from datetime import date, datetime
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Header, Query, Request
+from fastapi import APIRouter, Depends, Header, Query, Request
 
-from app.api.deps import DbSession, Perm
+from app.api.deps import CurrentUser, DbSession, require_permission
 from app.schemas.admin_ops import (
     AdminCancel,
     DisputeCreate,
@@ -40,7 +40,7 @@ def _ops(request: Request, session: DbSession) -> AdminBookingOps:
 @router.get("/refunds", summary="Refund history (filter by status, payment, booking, date)")
 async def list_refunds(
     request: Request,
-    _: Perm("payments.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("payments.view"))],
     session: DbSession,
     status_filter: Annotated[RefundStatus | None, Query(alias="status")] = None,
     payment_id: UUID | None = None,
@@ -50,7 +50,7 @@ async def list_refunds(
     date_to: DateTo = None,
     limit: Limit = 20,
     offset: Offset = 0,
-) -> dict:
+) -> dict[str, Any]:
     lo = hi = None
     if date_from or date_to:
         svc = AdminService(session, request.app.state.settings)
@@ -69,7 +69,12 @@ async def list_refunds(
 
 
 @router.get("/refunds/{refund_id}", summary="One refund")
-async def get_refund(refund_id: UUID, request: Request, _: Perm("payments.view"), session: DbSession) -> dict:
+async def get_refund(
+    refund_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("payments.view"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _refunds(request, session).get(refund_id)
 
 
@@ -78,10 +83,10 @@ async def create_refund(
     payment_id: UUID,
     body: RefundCreate,
     request: Request,
-    user: Perm("refunds.manage"),
+    user: Annotated[CurrentUser, Depends(require_permission("refunds.manage"))],
     session: DbSession,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
-) -> dict:
+) -> dict[str, Any]:
     """Disabled until the refund policy (Q9) is approved and the `refunds_enabled` switch is on."""
     return await _refunds(request, session).create(
         user, payment_id, body.amount_paise, body.reason, idempotency_key, body.dispute_id
@@ -90,16 +95,23 @@ async def create_refund(
 
 @router.post("/refunds/{refund_id}/reconcile", summary="Ask the gateway what happened to this refund")
 async def reconcile_refund(
-    refund_id: UUID, request: Request, user: Perm("refunds.manage"), session: DbSession
-) -> dict:
+    refund_id: UUID,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("refunds.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _refunds(request, session).reconcile(user, refund_id)
 
 
 # ------------------------------------------------------------------ booking intervention
 @router.post("/bookings/{booking_id}/cancel", summary="Exceptional cancellation (state machine, audited)")
 async def cancel_booking(
-    booking_id: UUID, body: AdminCancel, request: Request, user: Perm("bookings.manage"), session: DbSession
-) -> dict:
+    booking_id: UUID,
+    body: AdminCancel,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("bookings.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _ops(request, session).cancel(user, booking_id, body.reason, body.dispute_id)
 
 
@@ -107,7 +119,7 @@ async def cancel_booking(
 @router.get("/disputes", summary="Disputes")
 async def list_disputes(
     request: Request,
-    _: Perm("disputes.manage"),
+    _: Annotated[CurrentUser, Depends(require_permission("disputes.manage"))],
     session: DbSession,
     status_filter: Annotated[
         Literal["open", "investigating", "resolved", "rejected"] | None, Query(alias="status")
@@ -116,14 +128,17 @@ async def list_disputes(
     booking_id: UUID | None = None,
     limit: Limit = 20,
     offset: Offset = 0,
-) -> dict:
+) -> dict[str, Any]:
     return await _ops(request, session).list_disputes(status_filter, priority, booking_id, limit, offset)
 
 
 @router.post("/disputes", status_code=201, summary="Open a dispute on a booking")
 async def create_dispute(
-    body: DisputeCreate, request: Request, user: Perm("disputes.manage"), session: DbSession
-) -> dict:
+    body: DisputeCreate,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("disputes.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _ops(request, session).create_dispute(
         user, body.booking_id, body.subject, body.description, body.raised_by_role, body.priority
     )
@@ -131,22 +146,33 @@ async def create_dispute(
 
 @router.get("/disputes/{dispute_id}", summary="Dispute with booking, payment, refunds and full history")
 async def get_dispute(
-    dispute_id: UUID, request: Request, _: Perm("disputes.manage"), session: DbSession
-) -> dict:
+    dispute_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("disputes.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _ops(request, session).get_dispute(dispute_id)
 
 
 @router.post("/disputes/{dispute_id}/events", summary="Add an admin note or evidence")
 async def add_dispute_event(
-    dispute_id: UUID, body: DisputeNote, request: Request, user: Perm("disputes.manage"), session: DbSession
-) -> dict:
+    dispute_id: UUID,
+    body: DisputeNote,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("disputes.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _ops(request, session).add_event(user, dispute_id, body.kind, body.body)
 
 
 @router.patch("/disputes/{dispute_id}", summary="Change status or priority")
 async def update_dispute(
-    dispute_id: UUID, body: DisputeUpdate, request: Request, user: Perm("disputes.manage"), session: DbSession
-) -> dict:
+    dispute_id: UUID,
+    body: DisputeUpdate,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("disputes.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _ops(request, session).update(user, dispute_id, body.status, body.priority, body.reason)
 
 
@@ -155,9 +181,9 @@ async def resolve_dispute(
     dispute_id: UUID,
     body: DisputeResolve,
     request: Request,
-    user: Perm("disputes.manage"),
+    user: Annotated[CurrentUser, Depends(require_permission("disputes.manage"))],
     session: DbSession,
-) -> dict:
+) -> dict[str, Any]:
     return await _ops(request, session).resolve(
         user, dispute_id, body.outcome, body.resolution_type, body.resolution_note
     )
@@ -182,7 +208,9 @@ def _fin(session: DbSession) -> FinanceService:
     return FinanceService(session)
 
 
-def _range(request: Request, session: DbSession, date_from: date | None, date_to: date | None):
+def _range(
+    request: Request, session: DbSession, date_from: date | None, date_to: date | None
+) -> tuple[date, date, datetime, datetime]:
     svc = AdminService(session, request.app.state.settings)
     start, end = svc.resolve_range(date_from, date_to)
     lo, hi = svc._bounds(start, end)
@@ -190,19 +218,29 @@ def _range(request: Request, session: DbSession, date_from: date | None, date_to
 
 
 @router.get("/finance/configs", summary="Fee / tax / commission configurations, newest first")
-async def list_configs(_: Perm("finance.view"), session: DbSession) -> dict:
+async def list_configs(
+    _: Annotated[CurrentUser, Depends(require_permission("finance.view"))], session: DbSession
+) -> dict[str, Any]:
     return {"items": await _fin(session).list_configs()}
 
 
 @router.post(
     "/finance/configs", status_code=201, summary="Draft a new configuration (does nothing until approved)"
 )
-async def create_config(body: FinanceConfigCreate, user: Perm("finance.manage"), session: DbSession) -> dict:
+async def create_config(
+    body: FinanceConfigCreate,
+    user: Annotated[CurrentUser, Depends(require_permission("finance.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _fin(session).create_draft(user, body.model_dump())
 
 
 @router.delete("/finance/configs/{config_id}", status_code=204, summary="Delete a draft")
-async def delete_config(config_id: UUID, user: Perm("finance.manage"), session: DbSession) -> Response:
+async def delete_config(
+    config_id: UUID,
+    user: Annotated[CurrentUser, Depends(require_permission("finance.manage"))],
+    session: DbSession,
+) -> Response:
     await _fin(session).delete_draft(user, config_id)
     return Response(status_code=204)
 
@@ -211,8 +249,11 @@ async def delete_config(config_id: UUID, user: Perm("finance.manage"), session: 
     "/finance/configs/{config_id}/approve", summary="Approve a draft: it becomes binding and immutable"
 )
 async def approve_config(
-    config_id: UUID, body: ReasonBody, user: Perm("finance.approve"), session: DbSession
-) -> dict:
+    config_id: UUID,
+    body: ReasonBody,
+    user: Annotated[CurrentUser, Depends(require_permission("finance.approve"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _fin(session).approve(user, config_id, body.reason)
 
 
@@ -221,11 +262,11 @@ async def approve_config(
 )
 async def finance_summary(
     request: Request,
-    _: Perm("finance.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("finance.view"))],
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
-) -> dict:
+) -> dict[str, Any]:
     start, end, lo, hi = _range(request, session, date_from, date_to)
     fin = _fin(session)
     cfg = await active_config(session)
@@ -258,7 +299,9 @@ async def finance_summary(
 @router.post(
     "/finance/accrue", summary="Write ledger entries for captured payments / processed refunds that have none"
 )
-async def accrue(user: Perm("finance.manage"), session: DbSession) -> dict:
+async def accrue(
+    user: Annotated[CurrentUser, Depends(require_permission("finance.manage"))], session: DbSession
+) -> dict[str, Any]:
     out = await _fin(session).accrue()
     audit.record(session, user.profile, "admin.ledger_accrued", "ledger", None, after=out)
     await session.commit()
@@ -268,7 +311,7 @@ async def accrue(user: Perm("finance.manage"), session: DbSession) -> dict:
 @router.get("/finance/ledger", summary="Immutable ledger entries")
 async def ledger(
     request: Request,
-    _: Perm("finance.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("finance.view"))],
     session: DbSession,
     owner_id: UUID | None = None,
     kind: Literal["sale", "refund"] | None = None,
@@ -276,10 +319,10 @@ async def ledger(
     date_to: DateTo = None,
     limit: Limit = 20,
     offset: Offset = 0,
-) -> dict:
+) -> dict[str, Any]:
     lo = hi = None
     if date_from or date_to:
-        _, _, lo, hi = _range(request, session, date_from or date_to, date_to or date_from)
+        _start, _end, lo, hi = _range(request, session, date_from or date_to, date_to or date_from)
     return await _fin(session).ledger_page(
         owner_id=owner_id, kind=kind, lo=lo, hi=hi, limit=limit, offset=offset
     )
@@ -288,13 +331,15 @@ async def ledger(
 @router.get(
     "/finance/owners/{owner_id}/balance", summary="What an owner has earned, been paid and can still be paid"
 )
-async def owner_balance(owner_id: UUID, _: Perm("finance.view"), session: DbSession) -> dict:
+async def owner_balance(
+    owner_id: UUID, _: Annotated[CurrentUser, Depends(require_permission("finance.view"))], session: DbSession
+) -> dict[str, Any]:
     return await _fin(session).owner_balance(owner_id)
 
 
 @router.get("/payouts", summary="Payout records")
 async def list_payouts(
-    _: Perm("finance.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("finance.view"))],
     session: DbSession,
     owner_id: UUID | None = None,
     status_filter: Annotated[
@@ -302,21 +347,29 @@ async def list_payouts(
     ] = None,
     limit: Limit = 20,
     offset: Offset = 0,
-) -> dict:
+) -> dict[str, Any]:
     return await _fin(session).list_payouts(
         owner_id=owner_id, status=status_filter, limit=limit, offset=offset
     )
 
 
 @router.post("/payouts", status_code=201, summary="Create a payout record (disabled until Q10 is approved)")
-async def create_payout(body: PayoutCreate, user: Perm("payouts.manage"), session: DbSession) -> dict:
+async def create_payout(
+    body: PayoutCreate,
+    user: Annotated[CurrentUser, Depends(require_permission("payouts.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _fin(session).create_payout(
         user, body.owner_id, body.amount_paise, body.period_from, body.period_to, body.note
     )
 
 
 @router.post("/payouts/{payout_id}/approve", summary="Approve a draft payout (a second administrator)")
-async def approve_payout(payout_id: UUID, user: Perm("payouts.manage"), session: DbSession) -> dict:
+async def approve_payout(
+    payout_id: UUID,
+    user: Annotated[CurrentUser, Depends(require_permission("payouts.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _fin(session).approve_payout(user, payout_id)
 
 
@@ -324,22 +377,31 @@ async def approve_payout(payout_id: UUID, user: Perm("payouts.manage"), session:
     "/payouts/{payout_id}/paid", summary="Record that the transfer was made, with its bank / UPI reference"
 )
 async def payout_paid(
-    payout_id: UUID, body: PayoutPaid, user: Perm("payouts.manage"), session: DbSession
-) -> dict:
+    payout_id: UUID,
+    body: PayoutPaid,
+    user: Annotated[CurrentUser, Depends(require_permission("payouts.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _fin(session).mark_paid(user, payout_id, body.method, body.reference)
 
 
 @router.post("/payouts/{payout_id}/cancel", summary="Cancel an unpaid payout")
 async def payout_cancel(
-    payout_id: UUID, body: ReasonBody, user: Perm("payouts.manage"), session: DbSession
-) -> dict:
+    payout_id: UUID,
+    body: ReasonBody,
+    user: Annotated[CurrentUser, Depends(require_permission("payouts.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _fin(session).cancel_payout(user, payout_id, body.reason)
 
 
 @router.post("/finance/reconciliation", status_code=201, summary="Run a reconciliation for a date range")
 async def run_reconciliation(
-    body: ReconcileRun, request: Request, user: Perm("finance.manage"), session: DbSession
-) -> dict:
+    body: ReconcileRun,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("finance.manage"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await ReconciliationService(
         session, request.app.state.settings, request.app.state.payment_gateway
     ).run(user, body.date_from, body.date_to)
@@ -347,22 +409,31 @@ async def run_reconciliation(
 
 @router.get("/finance/reconciliation", summary="Reconciliation runs")
 async def list_runs(
-    request: Request, _: Perm("finance.view"), session: DbSession, limit: Limit = 20, offset: Offset = 0
-) -> dict:
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("finance.view"))],
+    session: DbSession,
+    limit: Limit = 20,
+    offset: Offset = 0,
+) -> dict[str, Any]:
     return await ReconciliationService(
         session, request.app.state.settings, request.app.state.payment_gateway
     ).list_runs(limit, offset)
 
 
 @router.get("/finance/reconciliation/{run_id}", summary="One run with every mismatch")
-async def get_run(run_id: UUID, request: Request, _: Perm("finance.view"), session: DbSession) -> dict:
+async def get_run(
+    run_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("finance.view"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await ReconciliationService(
         session, request.app.state.settings, request.app.state.payment_gateway
     ).get(run_id)
 
 
 # ------------------------------------------------------------------ downloadable reports
-def _csv_response(header: list[str], rows: list[list], name: str) -> Response:
+def _csv_response(header: list[str], rows: list[list[Any]], name: str) -> Response:
     body = AdminService._csv(header, rows)
     return Response(
         content=body,
@@ -371,7 +442,7 @@ def _csv_response(header: list[str], rows: list[list], name: str) -> Response:
     )
 
 
-async def _audited(session: DbSession, user, kind: str, rows: int, **filters) -> None:
+async def _audited(session: DbSession, user: CurrentUser, kind: str, rows: int, **filters: Any) -> None:
     audit.record(session, user.profile, "admin.export", kind, None, rows=rows, filters=filters)
     await session.commit()
 
@@ -379,7 +450,7 @@ async def _audited(session: DbSession, user, kind: str, rows: int, **filters) ->
 @router.get("/exports/refunds.csv", summary="Refund report")
 async def export_refunds(
     request: Request,
-    user: Perm("exports.download"),
+    user: Annotated[CurrentUser, Depends(require_permission("exports.download"))],
     session: DbSession,
     status_filter: Annotated[RefundStatus | None, Query(alias="status")] = None,
     date_from: DateFrom = None,
@@ -387,7 +458,7 @@ async def export_refunds(
 ) -> Response:
     lo = hi = None
     if date_from or date_to:
-        _, _, lo, hi = _range(request, session, date_from or date_to, date_to or date_from)
+        _start, _end, lo, hi = _range(request, session, date_from or date_to, date_to or date_from)
     svc = _refunds(request, session)
     cap = request.app.state.settings.admin_export_max_rows
     page = await svc.list_page(
@@ -416,7 +487,7 @@ async def export_refunds(
 @router.get("/exports/ledger.csv", summary="Financial report: ledger entries")
 async def export_ledger(
     request: Request,
-    user: Perm("exports.download"),
+    user: Annotated[CurrentUser, Depends(require_permission("exports.download"))],
     session: DbSession,
     owner_id: UUID | None = None,
     date_from: DateFrom = None,
@@ -424,7 +495,7 @@ async def export_ledger(
 ) -> Response:
     lo = hi = None
     if date_from or date_to:
-        _, _, lo, hi = _range(request, session, date_from or date_to, date_to or date_from)
+        _start, _end, lo, hi = _range(request, session, date_from or date_to, date_to or date_from)
     cap = request.app.state.settings.admin_export_max_rows
     page = await _fin(session).ledger_page(owner_id=owner_id, kind=None, lo=lo, hi=hi, limit=cap, offset=0)
     rows = [
@@ -442,7 +513,10 @@ async def export_ledger(
 
 @router.get("/exports/payouts.csv", summary="Payout report")
 async def export_payouts(
-    request: Request, user: Perm("exports.download"), session: DbSession, owner_id: UUID | None = None
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("exports.download"))],
+    session: DbSession,
+    owner_id: UUID | None = None,
 ) -> Response:
     cap = request.app.state.settings.admin_export_max_rows
     page = await _fin(session).list_payouts(owner_id=owner_id, status=None, limit=cap, offset=0)
@@ -458,7 +532,10 @@ async def export_payouts(
 
 @router.get("/exports/reconciliation/{run_id}.csv", summary="Reconciliation mismatch report")
 async def export_reconciliation(
-    run_id: UUID, request: Request, user: Perm("exports.download"), session: DbSession
+    run_id: UUID,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("exports.download"))],
+    session: DbSession,
 ) -> Response:
     run = await ReconciliationService(
         session, request.app.state.settings, request.app.state.payment_gateway

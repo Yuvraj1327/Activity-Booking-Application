@@ -155,29 +155,29 @@ class ReconciliationService:
             summary["gateway_captured"] = len(g_captured)
             summary["gateway_captured_paise"] = sum(g.amount_paise for g in g_captured.values())
             for gid, g in g_captured.items():
-                p = by_pid.get(gid)
-                if p is None:
+                bp = by_pid.get(gid)
+                if bp is None:
                     items.append({"kind": "missing_in_database", "payment_id": None, "refund_id": None, "provider_payment_id": gid,
                                   "expected_paise": None, "actual_paise": g.amount_paise,
                                   "detail": "Captured at Razorpay but no matching payment record."})  # fmt: skip
-                elif g.amount_paise != p.amount_paise:
+                elif g.amount_paise != bp.amount_paise:
                     items.append(
                         self._item(
                             "amount_mismatch",
-                            p,
-                            p.amount_paise,
+                            bp,
+                            bp.amount_paise,
                             g.amount_paise,
                             "Amount differs from Razorpay.",
                         )
                     )
-                elif p.status not in pst.PAID:
+                elif bp.status not in pst.PAID:
                     items.append(
                         self._item(
                             "status_mismatch",
-                            p,
-                            p.amount_paise,
+                            bp,
+                            bp.amount_paise,
                             g.amount_paise,
-                            f"Razorpay says captured; we have '{p.status}'.",
+                            f"Razorpay says captured; we have '{bp.status}'.",
                         )
                     )
             for p in paid:

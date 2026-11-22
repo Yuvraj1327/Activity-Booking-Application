@@ -1,10 +1,10 @@
 from datetime import date
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
-from app.api.deps import AdminUser, DbSession, Perm, load_admin_permissions
+from app.api.deps import AdminUser, CurrentUser, DbSession, load_admin_permissions, require_permission
 from app.core.errors import ValidationFailedError
 from app.domain.booking_state import TRANSITIONS
 from app.domain.payment_state import TRANSITIONS as PAYMENT_TRANSITIONS
@@ -71,7 +71,7 @@ async def admin_me(user: AdminUser, session: DbSession) -> AdminMeOut:
 @router.get("/dashboard", response_model=DashboardOut, summary="KPIs, trends and recent activity")
 async def dashboard(
     request: Request,
-    _: Perm("dashboard.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("dashboard.view"))],
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
@@ -82,7 +82,7 @@ async def dashboard(
 @router.get("/analytics/bookings", response_model=BookingAnalytics, summary="Booking trends and status mix")
 async def analytics_bookings(
     request: Request,
-    _: Perm("analytics.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("analytics.view"))],
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
@@ -96,7 +96,7 @@ async def analytics_bookings(
 )
 async def analytics_revenue(
     request: Request,
-    _: Perm("analytics.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("analytics.view"))],
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
@@ -110,7 +110,7 @@ async def analytics_revenue(
 )
 async def analytics_platform(
     request: Request,
-    _: Perm("analytics.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("analytics.view"))],
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
@@ -121,7 +121,10 @@ async def analytics_platform(
 
 @router.get("/activity", response_model=ActivityPage, summary="Latest platform events")
 async def activity(
-    request: Request, _: Perm("dashboard.view"), session: DbSession, limit: Limit = 20
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("dashboard.view"))],
+    session: DbSession,
+    limit: Limit = 20,
 ) -> ActivityPage:
     return ActivityPage(items=await _svc(request, session).activity(limit))
 
@@ -129,11 +132,11 @@ async def activity(
 @router.get("/analytics/sports", summary="Bookings per sport (each booking split across a venue's sports)")
 async def analytics_sports(
     request: Request,
-    _: Perm("analytics.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("analytics.view"))],
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
-) -> dict:
+) -> dict[str, Any]:
     svc = _svc(request, session)
     start, end = svc.resolve_range(date_from, date_to)
     shares, none = await svc.sports_breakdown(start, end)
@@ -144,11 +147,11 @@ async def analytics_sports(
 @router.get("/analytics/cities", summary="Bookings and revenue per city")
 async def analytics_cities(
     request: Request,
-    _: Perm("analytics.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("analytics.view"))],
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
-) -> dict:
+) -> dict[str, Any]:
     svc = _svc(request, session)
     start, end = svc.resolve_range(date_from, date_to)
     return {"range": svc._range_out(start, end), "items": await svc.cities_breakdown(start, end)}
@@ -157,7 +160,7 @@ async def analytics_cities(
 @router.get("/analytics/venues", summary="Venue-wise booking performance")
 async def analytics_venues(
     request: Request,
-    _: Perm("analytics.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("analytics.view"))],
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
@@ -168,7 +171,7 @@ async def analytics_venues(
     order: SortOrder = "desc",
     limit: Limit = 20,
     offset: Offset = 0,
-) -> dict:
+) -> dict[str, Any]:
     svc = _svc(request, session)
     start, end = svc.resolve_range(date_from, date_to)
     items, more = await svc.venues_performance(
@@ -187,7 +190,7 @@ async def analytics_venues(
 @router.get("/exports/analytics.csv", summary="Sport / city / venue analytics CSV")
 async def export_analytics(
     request: Request,
-    admin: Perm("exports.download"),
+    admin: Annotated[CurrentUser, Depends(require_permission("exports.download"))],
     session: DbSession,
     dimension: Literal["sport", "city", "venue"] = "sport",
     date_from: DateFrom = None,
@@ -239,7 +242,7 @@ async def export_analytics(
 @router.get("/owners", response_model=OwnerPage, summary="Venue owners (search, filter, sort)")
 async def list_owners(
     request: Request,
-    _: Perm("owners.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("owners.view"))],
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
     status_filter: Annotated[AccountStatus | None, Query(alias="status")] = None,
@@ -253,7 +256,10 @@ async def list_owners(
 
 @router.get("/owners/{owner_id}", response_model=OwnerDetail, summary="Owner profile, venues and activity")
 async def get_owner(
-    owner_id: UUID, request: Request, _: Perm("owners.view"), session: DbSession
+    owner_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("owners.view"))],
+    session: DbSession,
 ) -> OwnerDetail:
     return await _svc(request, session).get_owner(owner_id)
 
@@ -262,7 +268,7 @@ async def get_owner(
 async def owner_history(
     owner_id: UUID,
     request: Request,
-    _: Perm("owners.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("owners.view"))],
     session: DbSession,
     limit: Limit = 20,
     offset: Offset = 0,
@@ -272,8 +278,12 @@ async def owner_history(
 
 @router.get("/owners/{owner_id}/payouts", summary="Payout history of an owner")
 async def owner_payouts(
-    owner_id: UUID, _: Perm("finance.view"), session: DbSession, limit: Limit = 20, offset: Offset = 0
-) -> dict:
+    owner_id: UUID,
+    _: Annotated[CurrentUser, Depends(require_permission("finance.view"))],
+    session: DbSession,
+    limit: Limit = 20,
+    offset: Offset = 0,
+) -> dict[str, Any]:
     from app.services.ledger import FinanceService
 
     svc = FinanceService(session)
@@ -289,7 +299,11 @@ async def owner_payouts(
     summary="Suspend or reactivate an owner (audited)",
 )
 async def set_owner_status(
-    owner_id: UUID, body: StatusChange, request: Request, admin: Perm("owners.manage"), session: DbSession
+    owner_id: UUID,
+    body: StatusChange,
+    request: Request,
+    admin: Annotated[CurrentUser, Depends(require_permission("owners.manage"))],
+    session: DbSession,
 ) -> StatusChangeOut:
     return await _svc(request, session).change_status(
         admin.profile, owner_id, "owner", body.status, body.reason
@@ -300,7 +314,7 @@ async def set_owner_status(
 @router.get("/customers", response_model=CustomerPage, summary="Customers (search, filter, sort)")
 async def list_customers(
     request: Request,
-    _: Perm("customers.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("customers.view"))],
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
     status_filter: Annotated[AccountStatus | None, Query(alias="status")] = None,
@@ -316,7 +330,10 @@ async def list_customers(
     "/customers/{customer_id}", response_model=CustomerDetail, summary="Customer profile and booking history"
 )
 async def get_customer(
-    customer_id: UUID, request: Request, _: Perm("customers.view"), session: DbSession
+    customer_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("customers.view"))],
+    session: DbSession,
 ) -> CustomerDetail:
     return await _svc(request, session).get_customer(customer_id)
 
@@ -325,7 +342,7 @@ async def get_customer(
 async def customer_history(
     customer_id: UUID,
     request: Request,
-    _: Perm("customers.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("customers.view"))],
     session: DbSession,
     limit: Limit = 20,
     offset: Offset = 0,
@@ -342,7 +359,7 @@ async def set_customer_status(
     customer_id: UUID,
     body: StatusChange,
     request: Request,
-    admin: Perm("customers.manage"),
+    admin: Annotated[CurrentUser, Depends(require_permission("customers.manage"))],
     session: DbSession,
 ) -> StatusChangeOut:
     return await _svc(request, session).change_status(
@@ -354,7 +371,7 @@ async def set_customer_status(
 @router.get("/venues", response_model=VenuePage, summary="All venues (read-only monitoring)")
 async def list_venues(
     request: Request,
-    _: Perm("venues.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("venues.view"))],
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
     status_filter: Annotated[
@@ -376,7 +393,10 @@ async def list_venues(
 
 @router.get("/venues/{venue_id}", response_model=VenueDetail, summary="Venue detail (read-only)")
 async def get_venue(
-    venue_id: UUID, request: Request, _: Perm("venues.view"), session: DbSession
+    venue_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("venues.view"))],
+    session: DbSession,
 ) -> VenueDetail:
     return await _svc(request, session).get_venue(venue_id)
 
@@ -387,7 +407,7 @@ async def get_venue(
 )
 async def admin_bookings(
     request: Request,
-    _: Perm("bookings.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("bookings.view"))],
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
@@ -432,7 +452,10 @@ async def admin_bookings(
     summary="Booking with history and payments",
 )
 async def admin_booking(
-    booking_id: UUID, request: Request, _: Perm("bookings.view"), session: DbSession
+    booking_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("bookings.view"))],
+    session: DbSession,
 ) -> AdminBookingDetailOut:
     return await _svc(request, session).get_booking(booking_id, _pay(request, session))
 
@@ -440,7 +463,9 @@ async def admin_booking(
 # ------------------------------------------------------------------ payments (read-only)
 @router.get("/payments/summary", response_model=AdminPaymentSummary, summary="Payment totals and counts")
 async def payments_summary(
-    request: Request, _: Perm("payments.view"), session: DbSession
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("payments.view"))],
+    session: DbSession,
 ) -> AdminPaymentSummary:
     return await _pay(request, session).admin_summary()
 
@@ -448,7 +473,7 @@ async def payments_summary(
 @router.get("/payments", response_model=AdminPaymentPage, summary="All payments (read-only)")
 async def admin_payments(
     request: Request,
-    _: Perm("payments.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("payments.view"))],
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
@@ -483,7 +508,10 @@ async def admin_payments(
     "/payments/{payment_id}", response_model=AdminPaymentDetail, summary="Payment with gateway events"
 )
 async def admin_payment(
-    payment_id: UUID, request: Request, _: Perm("payments.view"), session: DbSession
+    payment_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("payments.view"))],
+    session: DbSession,
 ) -> AdminPaymentDetail:
     return await _pay(request, session).admin_get(payment_id)
 
@@ -500,7 +528,7 @@ def _csv(body: str, name: str) -> Response:
 @router.get("/exports/bookings.csv", summary="Bookings CSV (no customer contact details)")
 async def export_bookings(
     request: Request,
-    admin: Perm("exports.download"),
+    admin: Annotated[CurrentUser, Depends(require_permission("exports.download"))],
     session: DbSession,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     payment_status: str | None = None,
@@ -534,7 +562,7 @@ async def export_bookings(
 @router.get("/exports/payments.csv", summary="Transactions CSV (no card data)")
 async def export_payments(
     request: Request,
-    admin: Perm("exports.download"),
+    admin: Annotated[CurrentUser, Depends(require_permission("exports.download"))],
     session: DbSession,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     date_from: DateFrom = None,
@@ -549,12 +577,20 @@ async def export_payments(
 
 
 @router.get("/exports/customers.csv", summary="Customer report CSV (no e-mail or phone)")
-async def export_customers(request: Request, admin: Perm("exports.download"), session: DbSession) -> Response:
+async def export_customers(
+    request: Request,
+    admin: Annotated[CurrentUser, Depends(require_permission("exports.download"))],
+    session: DbSession,
+) -> Response:
     return _csv(await _svc(request, session).export_people(admin.profile, "customer"), "zuruv-customers.csv")
 
 
 @router.get("/exports/owners.csv", summary="Owner report CSV (no e-mail or phone)")
-async def export_owners(request: Request, admin: Perm("exports.download"), session: DbSession) -> Response:
+async def export_owners(
+    request: Request,
+    admin: Annotated[CurrentUser, Depends(require_permission("exports.download"))],
+    session: DbSession,
+) -> Response:
     return _csv(await _svc(request, session).export_people(admin.profile, "owner"), "zuruv-owners.csv")
 
 
@@ -562,7 +598,7 @@ async def export_owners(request: Request, admin: Perm("exports.download"), sessi
 @router.get("/audit-logs", response_model=AuditPage, summary="Audit trail of sensitive actions")
 async def audit_logs(
     request: Request,
-    _: Perm("audit.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("audit.view"))],
     session: DbSession,
     action: Annotated[str | None, Query(max_length=100)] = None,
     entity_type: Annotated[str | None, Query(max_length=60)] = None,
@@ -586,5 +622,7 @@ async def audit_logs(
 
 
 @router.get("/audit-actions", summary="Action names that appear in the audit log (for the filter)")
-async def audit_actions(request: Request, _: Perm("audit.view"), session: DbSession) -> dict:
+async def audit_actions(
+    request: Request, _: Annotated[CurrentUser, Depends(require_permission("audit.view"))], session: DbSession
+) -> dict[str, Any]:
     return {"items": await _svc(request, session).audit_actions()}

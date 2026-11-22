@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,7 +34,7 @@ def coupon_out(c: Coupon, redeemed: int | None = None) -> dict[str, Any]:
     }  # fmt: skip
 
 
-def _standing():
+def _standing() -> ColumnElement[bool]:
     """Bookings whose redemption still counts."""
     unpaid = ("unpaid", "pending", "failed")
     cancelled = (bst.CANCELLED_CUSTOMER, bst.CANCELLED_OWNER, bst.CANCELLED_ADMIN)

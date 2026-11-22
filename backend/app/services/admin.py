@@ -175,7 +175,7 @@ class AdminService:
         return out
 
     async def _audit(
-        self, actor: Profile, action: str, entity_type: str | None, entity_id: str | None, **meta: object
+        self, actor: Profile, action: str, entity_type: str | None, entity_id: str | None, **meta: Any
     ) -> None:
         audit.record(self.s, actor, action, entity_type, entity_id, **meta)
 
@@ -268,6 +268,9 @@ class AdminService:
             or 0
         )
         fin = FinanceService(self.s)
+        platform: MoneyFigure | Unavailable
+        owner: MoneyFigure | Unavailable
+        tax: MoneyFigure | Unavailable
         if await any_approved(self.s):
             t = await fin.totals(lo, hi)
             cov = await fin.coverage(lo, hi)
@@ -275,7 +278,7 @@ class AdminService:
             platform = MoneyFigure(amount_paise=t["platform"], note=note)
             owner = MoneyFigure(amount_paise=t["owner"], note=note)
             tax = MoneyFigure(amount_paise=t["tax"], note="Tax portion of payments (not revenue).")
-            coverage: dict | None = cov
+            coverage: dict[str, Any] | None = cov
         else:
             platform = _unavailable(
                 "Platform revenue", "Q7, Q8 (fees and commission): no approved configuration"
@@ -1628,7 +1631,8 @@ class AdminService:
             limit=100,
             offset=0,
         )
-        return res["items"]
+        items: list[dict[str, Any]] = res["items"]
+        return items
 
     # ================================================================== exports (CSV)
     async def export_bookings(

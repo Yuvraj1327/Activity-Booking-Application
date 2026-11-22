@@ -158,10 +158,6 @@ def require_permission(*needed: str) -> Callable[..., Awaitable[CurrentUser]]:
     return dependency
 
 
-def Perm(*needed: str):  # noqa: N802 - used like a type: `user: Perm("refunds.manage")`
-    return Annotated[CurrentUser, Depends(require_permission(*needed))]
-
-
 AnyUser = Annotated[CurrentUser, Depends(get_current_user)]
 CustomerUser = Annotated[CurrentUser, Depends(require_customer)]
 OwnerUser = Annotated[CurrentUser, Depends(require_owner)]

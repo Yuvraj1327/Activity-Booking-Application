@@ -1,11 +1,11 @@
 """Admin: venue approval / verification / suspension, venue reports, owner KYC review."""
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
-from app.api.deps import DbSession, Perm
+from app.api.deps import CurrentUser, DbSession, require_permission
 from app.schemas.admin_ops import (
     KycDocDecision,
     KycOwnerDecision,
@@ -32,8 +32,12 @@ def _kyc(request: Request, session: DbSession) -> KycService:
 # ------------------------------------------------------------------ venues
 @router.post("/venues/{venue_id}/approve", summary="Approve a venue that is waiting for review")
 async def approve_venue(
-    venue_id: UUID, body: VenueDecision, request: Request, user: Perm("venues.moderate"), session: DbSession
-) -> dict:
+    venue_id: UUID,
+    body: VenueDecision,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("venues.moderate"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _mod(request, session).transition(user, venue_id, "approve", body.reason)
 
 
@@ -42,9 +46,9 @@ async def reject_venue(
     venue_id: UUID,
     body: VenueReasonRequired,
     request: Request,
-    user: Perm("venues.moderate"),
+    user: Annotated[CurrentUser, Depends(require_permission("venues.moderate"))],
     session: DbSession,
-) -> dict:
+) -> dict[str, Any]:
     return await _mod(request, session).transition(user, venue_id, "reject", body.reason)
 
 
@@ -55,23 +59,31 @@ async def suspend_venue(
     venue_id: UUID,
     body: VenueReasonRequired,
     request: Request,
-    user: Perm("venues.moderate"),
+    user: Annotated[CurrentUser, Depends(require_permission("venues.moderate"))],
     session: DbSession,
-) -> dict:
+) -> dict[str, Any]:
     return await _mod(request, session).transition(user, venue_id, "suspend", body.reason)
 
 
 @router.post("/venues/{venue_id}/reinstate", summary="Reinstate a suspended venue")
 async def reinstate_venue(
-    venue_id: UUID, body: VenueDecision, request: Request, user: Perm("venues.moderate"), session: DbSession
-) -> dict:
+    venue_id: UUID,
+    body: VenueDecision,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("venues.moderate"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _mod(request, session).transition(user, venue_id, "reinstate", body.reason)
 
 
 @router.post("/venues/{venue_id}/verify", summary="Mark a venue as verified")
 async def verify_venue(
-    venue_id: UUID, body: VenueDecision, request: Request, user: Perm("venues.moderate"), session: DbSession
-) -> dict:
+    venue_id: UUID,
+    body: VenueDecision,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("venues.moderate"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _mod(request, session).set_verified(user, venue_id, True, body.reason)
 
 
@@ -80,14 +92,19 @@ async def unverify_venue(
     venue_id: UUID,
     body: VenueReasonRequired,
     request: Request,
-    user: Perm("venues.moderate"),
+    user: Annotated[CurrentUser, Depends(require_permission("venues.moderate"))],
     session: DbSession,
-) -> dict:
+) -> dict[str, Any]:
     return await _mod(request, session).set_verified(user, venue_id, False, body.reason)
 
 
 @router.get("/venues/{venue_id}/history", summary="Approval / verification / suspension history")
-async def venue_history(venue_id: UUID, request: Request, _: Perm("venues.view"), session: DbSession) -> dict:
+async def venue_history(
+    venue_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("venues.view"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return {"items": await _mod(request, session).history(venue_id)}
 
 
@@ -95,7 +112,7 @@ async def venue_history(venue_id: UUID, request: Request, _: Perm("venues.view")
 @router.get("/venue-reports", summary="Reported venues")
 async def list_reports(
     request: Request,
-    _: Perm("venues.view"),
+    _: Annotated[CurrentUser, Depends(require_permission("venues.view"))],
     session: DbSession,
     status_filter: Annotated[
         Literal["open", "reviewing", "dismissed", "action_taken"] | None, Query(alias="status")
@@ -103,37 +120,60 @@ async def list_reports(
     venue_id: UUID | None = None,
     limit: Limit = 20,
     offset: Offset = 0,
-) -> dict:
+) -> dict[str, Any]:
     return await _mod(request, session).list_reports(status_filter, venue_id, limit, offset)
 
 
 @router.get("/venue-reports/{report_id}", summary="Report details")
-async def get_report(report_id: UUID, request: Request, _: Perm("venues.view"), session: DbSession) -> dict:
+async def get_report(
+    report_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("venues.view"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _mod(request, session).get_report(report_id)
 
 
 @router.patch("/venue-reports/{report_id}", summary="Review or close a report")
 async def resolve_report(
-    report_id: UUID, body: ReportResolve, request: Request, user: Perm("venues.moderate"), session: DbSession
-) -> dict:
+    report_id: UUID,
+    body: ReportResolve,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("venues.moderate"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _mod(request, session).resolve_report(user, report_id, body.status, body.note)
 
 
 # ------------------------------------------------------------------ KYC
 @router.get("/kyc/queue", summary="Owners with documents waiting for review")
 async def kyc_queue(
-    request: Request, _: Perm("kyc.review"), session: DbSession, limit: Limit = 20, offset: Offset = 0
-) -> dict:
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("kyc.review"))],
+    session: DbSession,
+    limit: Limit = 20,
+    offset: Offset = 0,
+) -> dict[str, Any]:
     return await _kyc(request, session).queue(limit, offset)
 
 
 @router.get("/owners/{owner_id}/kyc", summary="Owner verification status and submitted documents")
-async def owner_kyc(owner_id: UUID, request: Request, _: Perm("kyc.review"), session: DbSession) -> dict:
+async def owner_kyc(
+    owner_id: UUID,
+    request: Request,
+    _: Annotated[CurrentUser, Depends(require_permission("kyc.review"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _kyc(request, session).admin_view(owner_id)
 
 
 @router.get("/kyc/documents/{doc_id}/file", summary="View a KYC document (streamed, every view is audited)")
-async def kyc_file(doc_id: UUID, request: Request, user: Perm("kyc.review"), session: DbSession) -> Response:
+async def kyc_file(
+    doc_id: UUID,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("kyc.review"))],
+    session: DbSession,
+) -> Response:
     data, content_type, filename = await _kyc(request, session).read_file(user, doc_id)
     return Response(
         content=data,
@@ -151,13 +191,21 @@ async def kyc_file(doc_id: UUID, request: Request, user: Perm("kyc.review"), ses
     "/kyc/documents/{doc_id}/review", summary="Approve or reject one document (rejection needs a reason)"
 )
 async def review_doc(
-    doc_id: UUID, body: KycDocDecision, request: Request, user: Perm("kyc.review"), session: DbSession
-) -> dict:
+    doc_id: UUID,
+    body: KycDocDecision,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("kyc.review"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _kyc(request, session).review_document(user, doc_id, body.decision, body.reason)
 
 
 @router.post("/owners/{owner_id}/kyc/decision", summary="Verify or reject the owner's KYC as a whole")
 async def owner_kyc_decision(
-    owner_id: UUID, body: KycOwnerDecision, request: Request, user: Perm("kyc.review"), session: DbSession
-) -> dict:
+    owner_id: UUID,
+    body: KycOwnerDecision,
+    request: Request,
+    user: Annotated[CurrentUser, Depends(require_permission("kyc.review"))],
+    session: DbSession,
+) -> dict[str, Any]:
     return await _kyc(request, session).decide_owner(user, owner_id, body.decision, body.reason)

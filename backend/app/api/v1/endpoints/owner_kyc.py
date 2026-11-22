@@ -1,6 +1,6 @@
 """Owner side of KYC: submit and track verification documents."""
 
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, Request, Response, UploadFile, status
@@ -17,7 +17,7 @@ def _svc(request: Request, session: DbSession) -> KycService:
 
 
 @router.get("", summary="My verification status and submitted documents")
-async def my_kyc(request: Request, user: OwnerUser, session: DbSession) -> dict:
+async def my_kyc(request: Request, user: OwnerUser, session: DbSession) -> dict[str, Any]:
     return await _svc(request, session).owner_view(user.id)
 
 
@@ -28,7 +28,7 @@ async def upload_document(
     session: DbSession,
     doc_type: Annotated[str, Form()],
     file: Annotated[UploadFile, File()],
-) -> dict:
+) -> dict[str, Any]:
     data = await file.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
         raise ValidationFailedError("Documents can be at most 5 MB.", code="FILE_TOO_LARGE")

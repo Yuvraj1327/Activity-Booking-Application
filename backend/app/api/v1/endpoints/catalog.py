@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Request, Response, status
@@ -111,7 +111,7 @@ async def remove_favorite(
 )
 async def report_venue(
     venue_id: UUID, body: VenueReportCreate, request: Request, user: CustomerUser, session: DbSession
-) -> dict:
+) -> dict[str, Any]:
     """Customers flag a listing (wrong information, unsafe, fraud...). Admins review it in the admin panel."""
     return await VenueModeration(session, request.app.state.settings).create_report(
         user.id, venue_id, body.reason, body.details

@@ -248,7 +248,10 @@ class VenueModeration:
         )
         v = await self.s.get(Venue, r.venue_id)
         return self._report_row(
-            *row, extra={"other_reports_on_venue": others, "venue_status": v.status if v else None}
+            row[0],
+            row[1],
+            row[2],
+            extra={"other_reports_on_venue": others, "venue_status": v.status if v else None},
         )
 
     async def resolve_report(

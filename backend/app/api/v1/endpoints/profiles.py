@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter
@@ -47,7 +48,7 @@ async def my_tickets(user: AnyUser, session: DbSession) -> list[SupportTicketOut
 @support_router.get(
     "/tickets/{ticket_id}/messages", summary="Replies from the ZURUV team on one of my messages"
 )
-async def ticket_replies(ticket_id: UUID, user: AnyUser, session: DbSession) -> dict:
+async def ticket_replies(ticket_id: UUID, user: AnyUser, session: DbSession) -> dict[str, Any]:
     from sqlalchemy import select
 
     from app.core.errors import NotFoundError
