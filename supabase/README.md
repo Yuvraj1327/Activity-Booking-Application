@@ -2,7 +2,7 @@
 
 Plain PostgreSQL files that build the complete ZURUV database in a Supabase project, so you can run them in the **Supabase SQL Editor** with no tooling. They are generated from, and kept equal to, the Alembic migrations.
 
-> **Source of truth:** `backend/alembic/versions/` (revisions 0001 → 0010). These SQL files are an equivalent, hand-runnable copy of Alembic head. Never edit them on their own: change Alembic first, then update the SQL and run `supabase/verify_sync.sh` (below).
+> **Source of truth:** `backend/alembic/versions/` (revisions 0001 → 0011). These SQL files are an equivalent, hand-runnable copy of Alembic head. Never edit them on their own: change Alembic first, then update the SQL and run `supabase/verify_sync.sh` (below).
 
 ## Files and execution order
 
@@ -19,14 +19,15 @@ Run them **in this order, each one once, on a fresh project**:
 | 7 | `migrations/007_notifications.sql` | `notifications`, `user_device_tokens`, `notification_preferences`, `email_deliveries` |
 | 8 | `migrations/008_reviews_and_favorites.sql` | `favorites`, `reviews`, `review_responses`, rating-aggregate trigger, immutability triggers |
 | 9 | `migrations/009_admin_and_audit.sql` | `audit_logs` (append-only) and the admin dashboard indexes |
-| 10 | `migrations/010_rls_storage_policies.sql` | Row Level Security on all 27 tables, API-role grants, 34 table policies, Storage buckets + policies, Alembic version stamp (`0009`, advanced to `0010` by 011) |
+| 10 | `migrations/010_rls_storage_policies.sql` | Row Level Security on the 27 tables that existed at that point (012 enables it on every new table too), API-role grants, 34 table policies, Storage buckets + policies, Alembic version stamp (`0009`, advanced to `0010` by 011) |
 | 10b | `migrations/011_settings.sql` | Settings: notification type switches, profile language + deletion request, customer sport interests, `support_tickets`; bumps the Alembic stamp to `0010` |
+| 10c | `migrations/012_admin_operations.sql` | Admin operations: roles/permissions (existing admins → `super_admin`), platform switches, venue approval + reports, owner KYC (private `kyc-documents` bucket), refunds, disputes, support replies, versioned finance config, immutable ledger, payouts, reconciliation, coupons, CMS; bumps the stamp to `0011` |
 | 11 | `seed.sql` | Reference data only: 17 categories (the 15 sports with icons in the app plus snooker and pickleball), 12 amenities, 10 cities (optional but the apps need categories/cities to be useful) |
 
-27 application tables in total (the 28th table in the database is `alembic_version`).
+46 application tables in total (the 47th table in the database is `alembic_version`).
 
 ### What is *not* in the schema, on purpose
-- **No refunds table.** The application has none: refund policy is an open business question (Q9, `docs/OPEN_QUESTIONS.md`). Refund state exists only as `payments.status` (`refunded`, `partially_refunded`) and `bookings.status` (`refund_pending`, `refunded`). No "transactions" table either: `payments` + `payment_events` are the transaction ledger.
+- **Refunds and payouts exist as tables (012) but are switched off.** The refund policy (Q9) and payout rules (Q10) are open business questions (`docs/OPEN_QUESTIONS.md`); `platform_settings` keeps real refunds and payout records disabled until they are decided. No "transactions" table: `payments` + `payment_events` are the transaction ledger.
 - **No write policies for `anon`/`authenticated`.** The mobile apps and the admin site never write to the database directly; every write goes through the FastAPI backend, which connects as the database owner. The API roles may only `SELECT`, through the policies below.
 - **No admin-creation SQL.** Admins are created by the operator script (see step 5).
 
@@ -42,14 +43,14 @@ Run them **in this order, each one once, on a fresh project**:
    select count(*) from pg_tables where schemaname='public' and not rowsecurity
      and tablename <> 'alembic_version';                                         -- 0
    select id, public from storage.buckets order by id;                            -- profile-images (false), venue-images (true)
-   select version_num from public.alembic_version;                                -- 0010
+   select version_num from public.alembic_version;                                -- 0011
    ```
 5. Create the first admin (needs the backend checkout; it never needs the service-role key): create the user in **Authentication → Users → Add user**, then from `backend/` with `DATABASE_URL` set to the project's direct/session connection string:
    `python -m scripts.create_admin --email <admin-email> --name "<Name>"`.
 6. Configure the backend (`DATABASE_URL`, `SUPABASE_URL`, …) as in `docs/MANUAL_DEPLOYMENT_GUIDE.md`.
 
 ### Using Alembic instead
-Both routes give the same database. Use **either** the SQL files **or** `alembic upgrade head`, not both. The SQL files stamp `alembic_version = 0010`, so after running them `alembic upgrade head` does nothing and future Alembic migrations apply normally.
+Both routes give the same database. Use **either** the SQL files **or** `alembic upgrade head`, not both. The SQL files stamp `alembic_version = 0011`, so after running them `alembic upgrade head` does nothing and future Alembic migrations apply normally.
 
 ## Safety
 - **Fresh databases only.** `001` aborts with a clear message if `public.profiles` already exists. The files contain no `DROP`, `TRUNCATE` or `DELETE`, and no `UPDATE` of existing rows. `010` runs `REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated` (identical to Alembic revision 0003): on a project where you had already created other tables in `public` and relied on the default Supabase API grants, those grants are removed. That is intended for ZURUV and never deletes data.

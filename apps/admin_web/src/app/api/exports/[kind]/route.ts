@@ -4,10 +4,15 @@ import { adminRequest, AdminApiError } from "@/lib/admin-api";
 // Streams a CSV from the API using the signed-in admin's session. The browser never sees the API
 // token; the API enforces admin-only access, audits the export and strips contact details.
 const ALLOWED: Record<string, string[]> = {
-  bookings: ["status", "payment_status", "venue_id", "from", "to"],
+  bookings: ["status", "payment_status", "venue_id", "owner_id", "category_id", "city_id", "refund_status", "from", "to"],
   payments: ["status", "from", "to"],
   customers: [],
   owners: [],
+  refunds: ["status", "from", "to"],
+  ledger: ["owner_id", "from", "to"],
+  payouts: ["owner_id"],
+  analytics: ["dimension", "from", "to"],
+  reconciliation: ["run_id"],
 };
 
 export const dynamic = "force-dynamic";
@@ -22,7 +27,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (v) query[k] = v;
   }
   try {
-    const res = await adminRequest(`/admin/exports/${kind}.csv`, { query });
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (kind === "reconciliation" && !UUID.test(query.run_id ?? "")) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
+    const path = kind === "reconciliation" ? `/admin/exports/reconciliation/${query.run_id}.csv` : `/admin/exports/${kind}.csv`;
+    const res = await adminRequest(path, { query: kind === "reconciliation" ? {} : query });
     return new NextResponse(res.body, {
       status: 200,
       headers: {

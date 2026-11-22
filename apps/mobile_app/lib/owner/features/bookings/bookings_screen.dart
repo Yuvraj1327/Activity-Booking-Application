@@ -195,7 +195,7 @@ class _BookingCard extends StatelessWidget {
       'confirmed' => (ZuruvColors.success, const Color(0xFFE6F7EE)),
       'completed' => (OwnerColors.blue, OwnerColors.tint),
       'pending_payment' || 'refund_pending' => (const Color(0xFFB26A00), const Color(0xFFFFF3E0)),
-      'cancelled_by_customer' || 'cancelled_by_owner' || 'payment_failed' || 'expired' => (ZuruvColors.error, const Color(0xFFFDE8EC)),
+      'cancelled_by_customer' || 'cancelled_by_owner' || 'cancelled_by_admin' || 'payment_failed' || 'expired' => (ZuruvColors.error, const Color(0xFFFDE8EC)),
       _ => (ZuruvColors.textSecondary, const Color(0xFFF0F0F4)),
     };
     return OwnerCard(

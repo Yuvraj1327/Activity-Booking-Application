@@ -6,11 +6,11 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SignOutButton } from "@/components/layout/sign-out-button";
-import { navGroups, settingsItem } from "@/lib/nav";
+import { settingsItem, visibleGroups } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 /** Phone-only hamburger that opens a slide-in sidebar with every navigation entry. */
-export function MobileMenu({ adminName }: { adminName: string }) {
+export function MobileMenu({ adminName, permissions }: { adminName: string; permissions: string[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -64,7 +64,7 @@ export function MobileMenu({ adminName }: { adminName: string }) {
             </button>
           </div>
           <nav aria-label="Main (mobile)" onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)} className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-3">
-            {navGroups.map((g) => (
+            {visibleGroups(permissions).map((g) => (
               <div key={g.title} className="flex flex-col gap-1">
                 <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{g.title}</p>
                 {g.items.map(({ label, href, icon: Icon }) => (

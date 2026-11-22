@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CalendarCheck, CalendarClock, CalendarX2, CreditCard, MapPin, Store, Users, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowRight, Wallet, BadgeCheck, CalendarCheck, CalendarClock, CalendarX2, CreditCard, MapPin, ShieldCheck, Store, Users } from "lucide-react";
 import { BriefBookings } from "@/components/data/booking-table";
 import { DateRangeFilter } from "@/components/data/date-range-filter";
 import { MoneyPanel } from "@/components/data/money-panel";
@@ -41,16 +41,18 @@ function Body({ d }: { d: Dashboard }) {
   return (
     <div className="space-y-6">
       <section aria-label="Platform totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Customers" value={formatNumber(t.customers)} hint={`${formatNumber(p.new_customers)} new in period`} icon={Users} />
-        <StatCard label="Venue owners" value={formatNumber(t.owners)} hint={`${formatNumber(p.new_owners)} new in period`} icon={Store} />
-        <StatCard label="Venues" value={formatNumber(t.venues)} hint={`${formatNumber(t.published_venues)} published`} icon={MapPin} />
-        <StatCard label="Bookings" value={formatNumber(p.bookings)} hint={`${formatNumber(t.bookings)} all time`} icon={CalendarCheck} trend={bookingData.map((r) => r.Bookings)} />
+        <StatCard label="Active customers" value={formatNumber(t.active_customers)} hint={`${formatNumber(t.customers)} registered · ${formatNumber(t.suspended_customers)} suspended · ${formatNumber(p.new_customers)} new in period`} icon={Users} />
+        <StatCard label="Active venue owners" value={formatNumber(t.active_owners)} hint={`${formatNumber(t.owners)} registered · ${formatNumber(t.suspended_owners)} suspended · ${formatNumber(p.new_owners)} new in period`} icon={Store} />
+        <StatCard label="Pending venue approvals" value={formatNumber(t.pending_venue_approvals)} hint={t.pending_venue_approvals ? "Review them in Venues" : "Nothing waiting"} icon={BadgeCheck} tone={t.pending_venue_approvals ? "warning" : "primary"} />
+        <StatCard label="Venues" value={formatNumber(t.venues)} hint={`${formatNumber(t.published_venues)} published · ${formatNumber(t.open_venue_reports)} open reports`} icon={MapPin} />
         <StatCard label="Payments" value={formatMoney(p.money.successful_payment_paise)} hint={`${formatNumber(p.transactions)} transactions in period`} icon={CreditCard} trend={payData.map((r) => r.Captured)} />
       </section>
-      <section aria-label="Booking status in period" className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Confirmed" value={formatNumber(p.confirmed)} icon={CalendarCheck} tone="success" />
-        <StatCard label="Pending payment" value={formatNumber(p.pending)} icon={CalendarClock} tone="warning" />
+      <section aria-label="Booking status in period" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard label="Bookings created" value={formatNumber(p.bookings)} hint={`${formatNumber(t.bookings)} all time`} icon={CalendarCheck} trend={bookingData.map((r) => r.Bookings)} />
+        <StatCard label="Confirmed (upcoming)" value={formatNumber(p.confirmed)} icon={CalendarCheck} tone="success" />
+        <StatCard label="Completed" value={formatNumber(p.completed)} hint="Finished bookings, counted separately" icon={ShieldCheck} tone="success" />
         <StatCard label="Cancelled" value={formatNumber(p.cancelled)} icon={CalendarX2} tone="danger" />
+        <StatCard label="Failed payments" value={formatNumber(p.failed_payments)} hint={`${formatNumber(p.pending)} bookings awaiting payment`} icon={p.failed_payments ? AlertTriangle : CalendarClock} tone={p.failed_payments ? "danger" : "warning"} />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">

@@ -51,6 +51,8 @@ from app.schemas.booking import (
     StatusEvent,
 )
 from app.services.availability import is_configured, load_busy, load_schedule, utcnow
+from app.services.coupons import CouponService
+from app.services.ledger import active_config, rules_of
 from app.services.notifications import EmailSpec, NotificationService
 
 _CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no 0/O/1/I/L
@@ -188,18 +190,35 @@ class BookingService:
             raise ConflictError("That slot was just taken. Please pick another.", code="SLOT_UNAVAILABLE")
         return window
 
-    async def quote(self, body: BookingRequest) -> QuoteOut:
+    async def _price(
+        self, res: Any, venue: Any, customer_id: UUID | None, coupon_code: str | None, *, lock: bool
+    ) -> tuple[dict[str, Any], Any]:
+        """Server-side price: slot price, fees/tax only under an approved finance configuration,
+        and a coupon discount validated here. Returns (snapshot, coupon or None)."""
+        cfg = await active_config(self.s)
+        rules = rules_of(cfg) if cfg is not None else None
+        common: dict[str, Any] = {
+            "slot_price_paise": res.slot_price_paise, "quantity": 1, "slot_minutes": res.slot_minutes,
+            "currency": venue.currency, "rules": rules, "config_version": cfg.version if cfg else None,
+        }  # fmt: skip
+        if not coupon_code:
+            return pricing.quote(**common), None
+        if customer_id is None:
+            raise ValidationFailedError("Sign in as a customer to use a coupon.", code="COUPON_NOT_FOUND")
+        before = pricing.quote(**common)
+        coupon, discount = await CouponService(self.s).evaluate(
+            customer_id, coupon_code, venue, before["base_amount_paise"],
+            before["fees_paise"] + before["tax_paise"], lock=lock,
+        )  # fmt: skip
+        return pricing.quote(**common, discount_paise=discount, coupon_code=coupon.code), coupon
+
+    async def quote(self, body: BookingRequest, customer_id: UUID | None = None) -> QuoteOut:
         now = utcnow()
         await self.settle_due(resource_id=body.resource_id, now=now)
         res, venue = await self._resource_and_venue(body.resource_id, lock=False)
         window = await self._validate_slot(res, venue, body.starts_at, now)
         assert res.slot_minutes is not None and res.slot_price_paise is not None
-        q = pricing.quote(
-            slot_price_paise=res.slot_price_paise,
-            quantity=1,
-            slot_minutes=res.slot_minutes,
-            currency=venue.currency,
-        )
+        q, _coupon = await self._price(res, venue, customer_id, body.coupon_code, lock=False)
         return QuoteOut(
             resource_id=res.id,
             venue_id=venue.id,
@@ -213,6 +232,7 @@ class BookingService:
             discount_paise=q["discount_paise"],
             total_amount_paise=q["total_amount_paise"],
             note=q["note"],
+            coupon_code=q["coupon_code"],
         )
 
     # ------------------------------------------------------------------ create
@@ -261,12 +281,7 @@ class BookingService:
         res, venue = await self._resource_and_venue(body.resource_id, lock=True)
         window = await self._validate_slot(res, venue, body.starts_at, now)
         assert res.slot_minutes is not None and res.slot_price_paise is not None
-        snap = pricing.quote(
-            slot_price_paise=res.slot_price_paise,
-            quantity=1,
-            slot_minutes=res.slot_minutes,
-            currency=venue.currency,
-        )
+        snap, coupon = await self._price(res, venue, customer_id, body.coupon_code, lock=True)
         status = st.CONFIRMED if mode == "instant" else st.PENDING
         tz = ZoneInfo(venue.timezone)
         for _ in range(5):  # booking_code collisions are astronomically rare; retry anyway
@@ -306,6 +321,9 @@ class BookingService:
                         )
                     )
                     await self.s.flush()
+                    if coupon is not None:
+                        CouponService(self.s).redeem(coupon, booking, snap["discount_paise"])
+                        await self.s.flush()
             except IntegrityError as exc:
                 state = _sqlstate(exc)
                 if state == "23P01":  # exclusion violation: someone else holds this slot

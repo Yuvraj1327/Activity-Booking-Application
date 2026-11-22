@@ -54,6 +54,9 @@ def setup_logging(level: str = "INFO", json_logs: bool = True) -> None:
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(level.upper())
+    from app.core import opslog
+
+    opslog.install()
 
     # Uvicorn's own access log would duplicate ours (see RequestContextMiddleware).
     logging.getLogger("uvicorn.access").handlers = []

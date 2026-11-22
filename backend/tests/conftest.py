@@ -42,8 +42,10 @@ CLEAN_SQL = """
 TRUNCATE public.email_deliveries, public.notification_preferences, public.user_device_tokens, public.payment_events, public.payments, public.booking_status_history, public.booking_slots, public.bookings, public.availability_blocks, public.schedule_exceptions, public.schedule_rules, public.favorites, public.audit_logs, public.notifications, public.venue_resources, public.venue_images,
          public.venue_amenities, public.venue_categories, public.venues, public.owner_profiles,
          public.customer_profiles, public.profiles, public.cities, public.categories,
-         public.amenities, auth.users CASCADE;
+         public.amenities, auth.users RESTART IDENTITY CASCADE;
 DELETE FROM storage.objects;
+INSERT INTO public.admin_roles (name, description, permissions, is_system)
+VALUES ('super_admin', 'test', '{}', true);
 """
 
 
@@ -140,6 +142,7 @@ def seed_profile(
     status: str = "active",
     email: str | None = None,
     business_name: str = "Test Business",
+    grant: str | None = "super_admin",
 ) -> uuid.UUID:
     email = email or f"{uuid.uuid4().hex[:8]}@example.com"
     uid = make_auth_user(url, email)
@@ -156,6 +159,14 @@ def seed_profile(
             "INSERT INTO public.owner_profiles (user_id, business_name) VALUES ($1, $2)",
             uid,
             business_name,
+        )
+    elif role == "admin" and grant:
+        sql(
+            url,
+            "INSERT INTO public.admin_profiles (user_id, role_id) "
+            "SELECT $1, id FROM public.admin_roles WHERE name = $2",
+            uid,
+            grant,
         )
     return uid
 

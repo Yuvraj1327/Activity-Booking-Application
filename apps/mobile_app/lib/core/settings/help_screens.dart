@@ -27,6 +27,16 @@ const ownerFaqs = <Faq>[
   ('A customer cancelled. What happens?', 'The slot is freed automatically and you receive a notification. Turn notifications on or off under Settings > Notifications.'),
 ];
 
+/// FAQs published in the admin console. Empty (or unreachable) means the built-in list below is shown.
+final cmsFaqsProvider = FutureProvider.autoDispose.family<List<Faq>, bool>((ref, isOwner) async {
+  try {
+    final items = await ref.watch(settingsRepositoryProvider).contentList(kind: 'faq', audience: isOwner ? 'owner' : 'customer');
+    return [for (final i in items) (i['title'] as String, i['body'] as String)];
+  } catch (_) {
+    return const <Faq>[];
+  }
+});
+
 /// FAQs plus entry points to contact support, send feedback and report an issue.
 class HelpScreen extends ConsumerWidget {
   const HelpScreen({super.key});
@@ -34,7 +44,9 @@ class HelpScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final base = ref.watch(settingsBaseProvider);
-    final faqs = ref.watch(isOwnerProvider) ? ownerFaqs : customerFaqs;
+    final isOwner = ref.watch(isOwnerProvider);
+    final managed = ref.watch(cmsFaqsProvider(isOwner)).valueOrNull ?? const <Faq>[];
+    final faqs = managed.isNotEmpty ? managed : (isOwner ? ownerFaqs : customerFaqs);
     return SettingsPage(
       title: 'Help & support',
       children: [

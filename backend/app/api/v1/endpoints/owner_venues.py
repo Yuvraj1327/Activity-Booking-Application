@@ -34,7 +34,8 @@ async def list_venues(
     session: DbSession,
     q: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
     status_filter: Annotated[
-        str | None, Query(alias="status", pattern="^(draft|published|archived)$")
+        str | None,
+        Query(alias="status", pattern="^(draft|pending_review|published|rejected|suspended|archived)$"),
     ] = None,
     limit: Limit = 20,
     offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
@@ -72,7 +73,9 @@ async def delete_venue(venue_id: UUID, request: Request, user: OwnerUser, sessio
 
 
 @router.post(
-    "/{venue_id}/publish", response_model=OwnerVenueDetail, summary="Publish (no admin approval yet, Q4)"
+    "/{venue_id}/publish",
+    response_model=OwnerVenueDetail,
+    summary="Publish, or submit for admin approval when that workflow is on (Q4)",
 )
 async def publish(venue_id: UUID, request: Request, user: OwnerUser, session: DbSession) -> OwnerVenueDetail:
     return await _svc(request, session).publish(venue_id, user.id)

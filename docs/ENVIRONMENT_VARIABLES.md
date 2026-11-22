@@ -67,6 +67,8 @@ Real credentials are never committed and never placed in Flutter or in `NEXT_PUB
 | `RAZORPAY_KEY_SECRET` | Secret. Signs/verifies checkout signatures and authenticates API calls. |
 | `RAZORPAY_WEBHOOK_SECRET` | Secret set in the Razorpay webhook form; **different** from the key secret. |
 | `RAZORPAY_API_BASE` | Default `https://api.razorpay.com/v1`. |
+| _(derived)_ Razorpay mode | `rzp_test_…` keys = test, `rzp_live_…` = live. `production` must use live keys and every other environment test keys; otherwise refunds are refused (`GATEWAY_MODE_MISMATCH`). |
+| `SUPABASE_STORAGE_BUCKET_KYC` | Private bucket for owner KYC documents. Default `kyc-documents` (created by migration 0011; never public). |
 | `FIREBASE_PROJECT_ID` | FCM project. |
 | `FIREBASE_SERVICE_ACCOUNT` | Secret. Service-account JSON text **or** a path to the file. |
 | `RESEND_API_KEY` | Secret. |

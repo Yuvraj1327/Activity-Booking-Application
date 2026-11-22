@@ -21,7 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 from app.models.mixins import TimestampMixin, uuid_pk
 
-VENUE_STATUSES = ("draft", "published", "archived")
+VENUE_STATUSES = ("draft", "pending_review", "published", "rejected", "suspended", "archived")
 
 
 class Venue(TimestampMixin, Base):
@@ -50,6 +50,13 @@ class Venue(TimestampMixin, Base):
     currency: Mapped[str] = mapped_column(Text, nullable=False, server_default="INR")
     rating_avg: Mapped[Decimal | None] = mapped_column(Numeric(2, 1))
     rating_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    verified_by: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="SET NULL")
+    )
+    status_reason: Mapped[str | None] = mapped_column(Text)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class VenueCategory(Base):

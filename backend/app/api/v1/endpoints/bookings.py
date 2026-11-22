@@ -68,7 +68,7 @@ async def availability_dates(
 
 @router.post("/bookings/quote", response_model=QuoteOut, summary="Server-side price for a slot")
 async def quote(body: BookingRequest, request: Request, user: CustomerUser, session: DbSession) -> QuoteOut:
-    out = await _book(request, session).quote(body)
+    out = await _book(request, session).quote(body, user.id)
     await session.commit()
     return out
 

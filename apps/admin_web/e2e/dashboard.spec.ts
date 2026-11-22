@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { adminToken, api } from "./support/helpers";
 
-type D = { totals: Record<string, number>; period: { bookings: number; confirmed: number; pending: number; cancelled: number; transactions: number; money: { successful_payment_paise: number } } };
+type D = { totals: Record<string, number>; period: { bookings: number; confirmed: number; completed: number; failed_payments: number; pending: number; cancelled: number; transactions: number; money: { successful_payment_paise: number } } };
 
 test.describe("dashboard", () => {
   test("every KPI equals the value the API returns for the same range", async ({ page, request }) => {
@@ -9,14 +9,16 @@ test.describe("dashboard", () => {
     const t = await adminToken(request);
     const d = await api<D>(request, "/admin/dashboard", t);
     const stat = (label: string) => page.getByTestId("stat-card").filter({ has: page.getByText(label, { exact: true }) }).getByTestId("stat-value");
-    await expect(stat("Customers")).toHaveText(String(d.totals.customers));
-    await expect(stat("Venue owners")).toHaveText(String(d.totals.owners));
+    // active users are counted by their real account status; completed is never merged into confirmed
+    await expect(stat("Active customers")).toHaveText(String(d.totals.active_customers));
+    await expect(stat("Active venue owners")).toHaveText(String(d.totals.active_owners));
+    await expect(stat("Pending venue approvals")).toHaveText(String(d.totals.pending_venue_approvals));
     await expect(stat("Venues")).toHaveText(String(d.totals.venues));
-    await expect(stat("Payment transactions")).toHaveText(String(d.totals.payments));
-    await expect(stat("Bookings (period)")).toHaveText(String(d.period.bookings));
-    await expect(stat("Confirmed")).toHaveText(String(d.period.confirmed));
-    await expect(stat("Pending payment")).toHaveText(String(d.period.pending));
+    await expect(stat("Bookings created")).toHaveText(String(d.period.bookings));
+    await expect(stat("Confirmed (upcoming)")).toHaveText(String(d.period.confirmed));
+    await expect(stat("Completed")).toHaveText(String(d.period.completed));
     await expect(stat("Cancelled")).toHaveText(String(d.period.cancelled));
+    await expect(stat("Failed payments")).toHaveText(String(d.period.failed_payments));
     // independent check against the seed: 6 customers, 4 owners, 4 venues, 30 paid bookings
     expect(d.totals.customers).toBe(6);
     expect(d.totals.owners).toBe(4);
@@ -44,7 +46,9 @@ test.describe("dashboard", () => {
     await expect(panel.getByText("Successful payments")).toBeVisible();
     await expect(panel.getByTestId("money-platform-revenue")).toHaveText("Not available");
     await expect(panel.getByTestId("money-owner-earnings")).toHaveText("Not available");
-    await expect(panel.getByTestId("money-refunds")).toHaveText("Not available");
+    await expect(panel.getByTestId("money-tax-collected")).toHaveText("Not available");
+    // refunds are real recorded data (zero here), not an unavailable rule
+    await expect(panel.getByTestId("money-refunds")).toContainText("₹");
     const paid = (await panel.getByTestId("money-paid").innerText()).replace(/[^\d.]/g, "");
     expect(Number(paid)).toBeCloseTo(d.period.money.successful_payment_paise / 100, 2);
   });
@@ -58,7 +62,7 @@ test.describe("dashboard", () => {
     await expect(page.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "true");
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
     const d = await api<D>(request, `/admin/dashboard?from=${today}&to=${today}`, t);
-    await expect(page.getByTestId("stat-card").filter({ has: page.getByText("Bookings (period)", { exact: true }) }).getByTestId("stat-value")).toHaveText(String(d.period.bookings));
+    await expect(page.getByTestId("stat-card").filter({ has: page.getByText("Bookings created", { exact: true }) }).getByTestId("stat-value")).toHaveText(String(d.period.bookings));
     for (const label of ["Last 7 days", "This month", "Last 30 days"]) {
       await page.getByRole("link", { name: label }).click();
       await expect(page.getByRole("link", { name: label })).toHaveAttribute("aria-current", "true");
@@ -67,7 +71,7 @@ test.describe("dashboard", () => {
 
   test("custom range: a window with no data shows zeroes and empty states, not errors", async ({ page }) => {
     await page.goto("/dashboard?from=2020-01-01&to=2020-01-31");
-    await expect(page.getByTestId("stat-card").filter({ has: page.getByText("Bookings (period)", { exact: true }) }).getByTestId("stat-value")).toHaveText("0");
+    await expect(page.getByTestId("stat-card").filter({ has: page.getByText("Bookings created", { exact: true }) }).getByTestId("stat-value")).toHaveText("0");
     await expect(page.getByTestId("chart-empty").first()).toBeVisible();
     await expect(page.getByTestId("error-state")).toHaveCount(0);
     await expect(page.getByText("No bookings in this period")).toBeVisible();

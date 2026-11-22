@@ -5,19 +5,21 @@ Nothing the client sends, in the body or in token metadata, can grant a role.
 """
 
 from collections.abc import AsyncIterator, Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.core.errors import AuthenticationError, PermissionDeniedError
+from app.core.permissions import ALL_PERMISSIONS, SUPER_ADMIN
 from app.core.security import JWTVerifier, TokenClaims
 from app.database.session import Database
-from app.models import Profile
+from app.models import AdminProfile, AdminRole, Profile
 from app.repositories.profiles import ProfileRepository
 
 _bearer = HTTPBearer(auto_error=False)
@@ -67,6 +69,8 @@ class CurrentUser:
     role: str
     profile: Profile
     claims: TokenClaims
+    permissions: frozenset[str] = field(default_factory=frozenset)
+    admin_role: str | None = None
 
     @property
     def mfa_verified(self) -> bool:
@@ -109,6 +113,53 @@ async def require_admin(
     if settings.admin_mfa_required and not user.mfa_verified:
         raise PermissionDeniedError("Multi-factor authentication is required.", code="MFA_REQUIRED")
     return user
+
+
+async def load_admin_permissions(session: AsyncSession, user_id: UUID) -> tuple[str | None, frozenset[str]]:
+    """The admin's role name and permissions, read from the database on every request."""
+    row = (
+        await session.execute(
+            select(AdminRole.name, AdminRole.permissions, AdminRole.is_system)
+            .join(AdminProfile, AdminProfile.role_id == AdminRole.id)
+            .where(AdminProfile.user_id == user_id)
+        )
+    ).first()
+    if row is None:
+        return None, frozenset()
+    name, perms, is_system = row
+    if is_system and name == SUPER_ADMIN:
+        return name, ALL_PERMISSIONS
+    return name, frozenset(p for p in perms if p in ALL_PERMISSIONS)
+
+
+def require_permission(*needed: str) -> Callable[..., Awaitable[CurrentUser]]:
+    """Admin (MFA-verified when enabled) who holds EVERY listed permission."""
+    unknown = set(needed) - ALL_PERMISSIONS
+    assert not unknown, f"unknown permission(s): {unknown}"
+
+    async def dependency(
+        user: Annotated[CurrentUser, Depends(require_admin)],
+        session: Annotated[AsyncSession, Depends(get_db_session)],
+    ) -> CurrentUser:
+        role, perms = await load_admin_permissions(session, user.id)
+        if role is None:
+            raise PermissionDeniedError(
+                "This administrator has no role assigned yet.", code="ADMIN_ROLE_REQUIRED"
+            )
+        missing = [p for p in needed if p not in perms]
+        if missing:
+            raise PermissionDeniedError(
+                "You do not have permission for this action.",
+                code="PERMISSION_DENIED",
+                details={"required": list(needed)},
+            )
+        return replace(user, permissions=perms, admin_role=role)
+
+    return dependency
+
+
+def Perm(*needed: str):  # noqa: N802 - used like a type: `user: Perm("refunds.manage")`
+    return Annotated[CurrentUser, Depends(require_permission(*needed))]
 
 
 AnyUser = Annotated[CurrentUser, Depends(get_current_user)]

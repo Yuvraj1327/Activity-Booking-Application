@@ -95,6 +95,8 @@ def test_empty_data_returns_zeroes_and_empty_lists_not_errors(clean_db):
         d = env.api.get(f"{API}/admin/dashboard", headers=admin_h).json()
         assert d["totals"] == {
             "customers": 0, "owners": 0, "venues": 0, "published_venues": 0, "bookings": 0, "payments": 0,
+            "active_customers": 0, "active_owners": 0, "suspended_customers": 0, "suspended_owners": 0,
+            "pending_venue_approvals": 0, "open_venue_reports": 0,
         }  # fmt: skip
         assert d["period"]["bookings"] == 0 and d["period"]["money"]["successful_payment_paise"] == 0
         assert len(d["booking_trend"]) == 30 and all(b["total"] == 0 for b in d["booking_trend"])
@@ -119,11 +121,14 @@ def test_dashboard_numbers_come_from_the_database(clean_db):
         assert d["totals"]["bookings"] == 2 and d["totals"]["payments"] == 1
         p = d["period"]
         assert (p["bookings"], p["confirmed"], p["pending"], p["cancelled"]) == (2, 1, 1, 0)
+        assert p["completed"] == 0 and p["failed_payments"] == 0
         m = p["money"]
         assert m["gross_booking_value_paise"] == 75000 and m["successful_payment_paise"] == 75000
         # Rules that are not approved are never computed.
-        for k in ("platform_revenue", "owner_earnings", "refunds"):
+        for k in ("platform_revenue", "owner_earnings", "tax_collected"):
             assert m[k]["available"] is False and m[k]["depends_on"]
+        # Refunds are real recorded data, so they are a number (zero here), not "unavailable".
+        assert m["refunds"] == {"available": True, "amount_paise": 0, "note": m["refunds"]["note"]}
         assert sum(b["total"] for b in d["booking_trend"]) == 2
         assert d["popular_venues"][0]["name"] == "Ace Arena" and d["popular_venues"][0]["bookings"] == 2
         assert d["recent_bookings"][0]["venue_name"] == "Ace Arena"
@@ -216,7 +221,9 @@ def test_platform_analytics_registrations_categories_and_top_venues(clean_db):
         paid_booking(env, w)
         a = env.api.get(f"{API}/admin/analytics/platform", headers=admin_h).json()
         assert (a["new_customers"], a["new_owners"], a["new_venues"]) == (1, 1, 1)
-        assert a["popular_categories"] == [{"category": "Cricket", "bookings": 1}]
+        assert [(c["category"], c["bookings"], c["tagged_bookings"]) for c in a["popular_categories"]] == [
+            ("Cricket", 1.0, 1)
+        ]
         assert a["top_venues"][0]["name"] == "Ace Arena"
         assert "admin" not in str(a["series"])  # admins are not counted as registrations
 
@@ -316,6 +323,8 @@ def test_suspend_and_reactivate_are_enforced_audited_and_notified(clean_db):
             "to": "suspended",
             "reason": "Policy review",
             "target_role": "owner",
+            "before": {"status": "active"},
+            "after": {"status": "suspended"},
         }
         # Other admins get a notification.
         types = {
@@ -574,7 +583,7 @@ def test_csv_exports_are_filtered_private_and_audited(clean_db):
         assert set(data[0]) == {
             "booking_code", "booking_id", "customer_id", "customer_name", "venue", "owner_name", "booking_date",
             "start_local", "end_local", "duration_minutes", "total_amount_paise", "currency", "payment_status",
-            "booking_status", "created_at_utc",
+            "booking_status", "created_at_utc", "city", "sports", "refund_status", "refunded_paise",
         }  # fmt: skip
         raw = env.api.get(f"{API}/admin/exports/bookings.csv", headers=admin_h).text
         assert "9812345678" not in raw and "@example.com" not in raw

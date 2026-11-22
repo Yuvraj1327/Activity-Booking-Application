@@ -35,13 +35,13 @@ test.describe("analytics", () => {
     expect(r.success_rate_percent).toBeCloseTo((30 * 100) / 31, 1);
     await expect(page.getByTestId("money-platform-revenue")).toHaveText("Not available");
     await expect(page.getByTestId("money-owner-earnings")).toHaveText("Not available");
-    await expect(page.getByTestId("money-refunds")).toHaveText("Not available");
+    await expect(page.getByTestId("money-refunds")).toContainText("₹");
   });
 
   test("platform tab: registrations, venue growth, categories, top venues", async ({ page }) => {
     await page.goto("/analytics?tab=platform");
     await expect(page.getByTestId("chart")).toHaveCount(4);
-    await expect(page.getByRole("heading", { name: "Popular categories" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Popular sports" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Most-booked venues" })).toBeVisible();
     await expect(page.getByTestId("stat-card").filter({ has: page.getByText("New customers", { exact: true }) }).getByTestId("stat-value")).toHaveText("6");
   });

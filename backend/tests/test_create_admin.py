@@ -26,3 +26,17 @@ def test_promote_is_idempotent_and_refuses_other_roles(clean_db):
 def test_unknown_email_is_refused(clean_db):
     with pytest.raises(SystemExit, match="No auth user"):
         run(promote(clean_db, "nobody@example.com", "N"))
+
+
+def test_new_admin_has_no_role_until_assigned_and_role_flag_assigns(api, clean_db):
+    a = make_auth_user(clean_db, "norole@example.com")
+    assert "NO role" in run(promote(clean_db, "norole@example.com", "No Role"))
+    h = auth_headers(a, aal="aal2")
+    assert api.get("/api/v1/admin/me", headers=h).json()["permissions"] == []
+    assert api.get("/api/v1/admin/dashboard", headers=h).json()["code"] == "ADMIN_ROLE_REQUIRED"
+    b = make_auth_user(clean_db, "boss2@example.com")
+    assert "super_admin" in run(promote(clean_db, "boss2@example.com", "Boss", "super_admin"))
+    assert api.get("/api/v1/admin/dashboard", headers=auth_headers(b, aal="aal2")).status_code == 200
+    with pytest.raises(SystemExit, match="No admin role"):
+        make_auth_user(clean_db, "x@example.com")
+        run(promote(clean_db, "x@example.com", "X", "nonexistent"))

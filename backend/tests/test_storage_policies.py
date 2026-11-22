@@ -29,10 +29,11 @@ def users(clean_db):
 
 def test_buckets_are_configured(clean_db):
     rows = {r["id"]: r for r in sql(clean_db, "SELECT * FROM storage.buckets")}
-    assert set(rows) == {"venue-images", "profile-images"}
+    assert set(rows) == {"venue-images", "profile-images", "kyc-documents"}
+    assert rows["kyc-documents"]["public"] is False
     assert rows["venue-images"]["public"] is True
     assert rows["profile-images"]["public"] is False
-    for bucket in rows.values():
+    for bucket in (rows["venue-images"], rows["profile-images"]):
         assert bucket["allowed_mime_types"] == ["image/jpeg", "image/png", "image/webp"]
     assert rows["venue-images"]["file_size_limit"] == 5 * 1024 * 1024
     assert rows["profile-images"]["file_size_limit"] == 2 * 1024 * 1024

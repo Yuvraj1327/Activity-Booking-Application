@@ -81,6 +81,7 @@ class Settings(BaseSettings):
     supabase_anon_key: SecretStr | None = None
     supabase_service_role_key: SecretStr | None = None
     supabase_storage_bucket_venue_images: str = "venue-images"
+    supabase_storage_bucket_kyc: str = "kyc-documents"  # PRIVATE bucket, backend-only access
 
     # --- JWT verification (tokens issued by Supabase Auth) ---
     # Legacy projects sign with a shared HS256 secret; newer projects publish a JWKS.
@@ -186,6 +187,18 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def razorpay_mode(self) -> str:
+        """`test` / `live` from the key prefix (Razorpay's own convention); `unconfigured` or `unknown`."""
+        key = self.razorpay_key_id
+        if not key:
+            return "unconfigured"
+        if key.startswith("rzp_test_"):
+            return "test"
+        if key.startswith("rzp_live_"):
+            return "live"
+        return "unknown"
 
     @property
     def admin_mfa_required(self) -> bool:

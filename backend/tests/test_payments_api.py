@@ -643,7 +643,7 @@ def test_admin_payment_visibility_is_admin_only_and_exposes_no_secrets(clean_db)
         }
         s = env.api.get(f"{API}/admin/payments/summary", headers=admin_h).json()
         assert s["gross_captured_paise"] == 50000 and s["captured_count"] == 1
-        assert s["refunds"]["available"] is False
+        assert s["refunds"]["processed_paise"] == 0
         text = lst and detail.text + json.dumps(s)
         assert KEY_SECRET not in text and "gateway_refs" not in text
         assert (

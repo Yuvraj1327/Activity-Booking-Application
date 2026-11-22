@@ -108,6 +108,23 @@ class SettingsRepository {
         return SupportTicket.fromJson(res.data!);
       });
 
+  /// Published content managed in the admin console (legal pages, FAQs). Returns null when nothing is published
+  /// for [slug], so screens can keep showing their built-in text.
+  Future<Map<String, dynamic>?> contentPage(String slug) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('/content/$slug');
+      return res.data;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> contentList({required String kind, required String audience}) async {
+    final res = await _dio.get<Map<String, dynamic>>('/content', queryParameters: {'kind': kind, 'audience': audience});
+    return [for (final i in (res.data!['items'] as List<dynamic>)) i as Map<String, dynamic>];
+  }
+
   Future<List<SupportTicket>> tickets() => apiCall(() async {
         final res = await _dio.get<List<dynamic>>('/support/tickets');
         return [for (final t in res.data!) SupportTicket.fromJson(t as Map<String, dynamic>)];

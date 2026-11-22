@@ -52,12 +52,29 @@ const TONES: Record<string, Tone> = {
   pending_payment: "warning", pending: "warning", created: "warning", authorized: "info", unpaid: "neutral", draft: "neutral",
   suspended: "danger", failed: "danger", payment_failed: "danger", cancelled_by_customer: "danger", cancelled_by_owner: "danger",
   expired: "neutral", archived: "neutral", refunded: "info", partially_refunded: "info", refund_pending: "warning",
+  cancelled_by_admin: "danger", pending_review: "warning", rejected: "danger",
+  requested: "warning", uncertain: "warning", processed: "success", awaiting: "warning", none: "neutral",
+  open: "warning", in_progress: "info", investigating: "info", resolved: "success", closed: "neutral", reviewing: "info",
+  dismissed: "neutral", action_taken: "success", approved: "success", verified: "success", not_submitted: "neutral",
+  draft_config: "neutral", retired: "neutral", paid_out: "success", cancelled: "danger",
+  low: "neutral", normal: "neutral", high: "warning", urgent: "danger",
 };
 export const toneOf = (status: string): Tone => TONES[status] ?? "neutral";
 
 export const BOOKING_STATUSES = [
   "pending_payment", "payment_failed", "confirmed", "expired", "cancelled_by_customer", "cancelled_by_owner",
-  "completed", "refund_pending", "refunded",
+  "cancelled_by_admin", "completed", "refund_pending", "refunded",
 ];
+export const REFUND_STATUSES = ["requested", "pending", "processed", "failed", "uncertain"];
+export const BOOKING_REFUND_FILTER = [
+  { value: "none", label: "No refund" }, { value: "awaiting", label: "Cancelled, refund not decided" },
+  { value: "pending", label: "Refund in progress" }, { value: "processed", label: "Refunded" }, { value: "failed", label: "Refund failed" },
+];
+export const VENUE_STATUSES = ["draft", "pending_review", "published", "rejected", "suspended", "archived"];
+
+/** Whole-rupee-aware input value (paise -> "250.50"), for edit forms. */
+export function paiseToRupees(p: number | null | undefined): string {
+  return p === null || p === undefined ? "" : (p / 100).toFixed(2).replace(/\.00$/, "");
+}
 export const BOOKING_PAYMENT_STATUSES = ["unpaid", "pending", "paid", "failed", "refunded", "partially_refunded"];
 export const PAYMENT_STATUSES = ["created", "pending", "authorized", "captured", "failed", "refunded", "partially_refunded"];

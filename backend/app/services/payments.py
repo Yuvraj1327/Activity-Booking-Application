@@ -35,7 +35,7 @@ from app.core.errors import (
 from app.domain import booking_state as bst
 from app.domain import payment_state as pst
 from app.gateways.razorpay import GatewayPayment, PaymentGateway, payment_from_entity
-from app.models import AuditLog, Booking, Payment, PaymentEvent, Profile, Venue
+from app.models import AuditLog, Booking, Payment, PaymentEvent, Profile, Refund, Venue
 from app.schemas.owner import Unavailable
 from app.schemas.payment import (
     AdminPaymentDetail,
@@ -67,6 +67,7 @@ _HANDLED_EVENTS = {
     "order.paid",
     "refund.processed",
     "refund.created",
+    "refund.failed",
 }
 _SENSITIVE_KEYS = {"card", "vpa", "email", "contact", "bank", "wallet", "acquirer_data", "notes"}
 
@@ -252,7 +253,7 @@ class PaymentService:
             return "ignored"
         try:
             if event_type.startswith("refund."):
-                outcome = await self._apply_refund(payment.id, gp.id, ref_entity or {}, event_type)
+                outcome = await self._apply_refund(payment.id, gp.id, ref_entity or {}, event_type, event_id)
             else:
                 # The webhook body is signed, but the amount/status we ACT on come from the gateway
                 # API when possible, so a stale or reordered webhook cannot downgrade state.
@@ -537,46 +538,34 @@ class PaymentService:
         return "applied"
 
     async def _apply_refund(
-        self, payment_id: UUID, gateway_payment_id: str, refund: dict[str, Any], event_type: str
+        self,
+        payment_id: UUID,
+        gateway_payment_id: str,
+        refund: dict[str, Any],
+        event_type: str,
+        event_id: str | None = None,
     ) -> str:
-        """Mirror a refund the gateway reports (e.g. issued from the dashboard). We never start one."""
-        pre = await self.s.get(Payment, payment_id)
-        assert pre is not None
-        booking = await self.s.scalar(select(Booking).where(Booking.id == pre.booking_id).with_for_update())
-        payment = await self.s.scalar(
-            select(Payment)
-            .where(Payment.id == payment_id)
-            .with_for_update()
-            .execution_options(populate_existing=True)
-        )
-        assert booking is not None and payment is not None
+        """Refund events (created / processed / failed) update our `refunds` rows. Refunds made in the
+        Razorpay dashboard get a row too (source=gateway). We never invent one from a payment event."""
+        from app.services.refunds import RefundService  # local: refunds imports bookings, not payments
+
+        payment = await self.s.get(Payment, payment_id)
+        assert payment is not None
         gp = GatewayPayment(
-            gateway_payment_id,
-            payment.provider_order_id,
-            payment.amount_paise,
-            payment.currency,
-            "refunded",
-            None,
-            None,
-            None,
-        )
-        if event_type != "refund.processed" or payment.status not in (pst.CAPTURED, pst.PARTIALLY_REFUNDED):
+            gateway_payment_id, payment.provider_order_id, payment.amount_paise, payment.currency,
+            "refunded", None, None, None,
+        )  # fmt: skip
+        if payment.status not in (pst.CAPTURED, pst.PARTIALLY_REFUNDED, pst.REFUNDED):
             return self._finish(
-                payment, event_type, "webhook", None, gp, "ignored", {"reason": "NOT_APPLICABLE"}
+                payment, event_type, "webhook", event_id, gp, "ignored", {"reason": "NOT_APPLICABLE"}
             )
-        refunded = int(refund.get("amount", 0))
-        total = refunded + int(payment.gateway_refs.get("refunded_paise", 0))
-        payment.gateway_refs = {**payment.gateway_refs, "refunded_paise": total}
-        if total >= payment.amount_paise:
-            self._set_status(payment, pst.REFUNDED)
-            booking.payment_status = "refunded"
-            if booking.status == bst.REFUND_PENDING:
-                BookingService(self.s, self.settings)._move(
-                    booking, bst.REFUNDED, "system", None, "Refund processed."
-                )
-        else:
-            self._set_status(payment, pst.PARTIALLY_REFUNDED)
-        return self._finish(payment, event_type, "webhook", None, gp, "applied", {"refunded_paise": refunded})
+        outcome = await RefundService(self.s, self.settings, self.gw).apply_gateway_event(
+            payment, refund, event_type
+        )
+        return self._finish(
+            payment, event_type, "webhook", event_id, gp, outcome,
+            {"refund_amount_paise": int(refund.get("amount", 0) or 0)},
+        )  # fmt: skip
 
     # ================================================================== helpers
     def _set_status(self, payment: Payment, target: str) -> None:
@@ -821,7 +810,30 @@ class PaymentService:
         )
 
     # ================================================================== admin
-    def _admin_out(self, p: Payment, b: Booking, venue_name: str) -> AdminPaymentOut:
+    async def _refund_sums(self, ids: list[UUID]) -> dict[UUID, tuple[int, int]]:
+        if not ids:
+            return {}
+        rows = (
+            await self.s.execute(
+                select(
+                    Refund.payment_id,
+                    func.coalesce(func.sum(Refund.amount_paise).filter(Refund.status == "processed"), 0),
+                    func.coalesce(
+                        func.sum(Refund.amount_paise).filter(
+                            Refund.status.in_(("requested", "pending", "uncertain"))
+                        ),
+                        0,
+                    ),
+                )
+                .where(Refund.payment_id.in_(ids))
+                .group_by(Refund.payment_id)
+            )
+        ).all()
+        return {r[0]: (int(r[1]), int(r[2])) for r in rows}
+
+    def _admin_out(
+        self, p: Payment, b: Booking, venue_name: str, refunded: int = 0, in_flight: int = 0
+    ) -> AdminPaymentOut:
         return AdminPaymentOut(
             id=p.id,
             booking_id=b.id,
@@ -843,6 +855,8 @@ class PaymentService:
             created_at=p.created_at,
             captured_at=p.captured_at,
             failed_at=p.failed_at,
+            refunded_paise=refunded,
+            refund_in_flight_paise=in_flight,
         )
 
     async def admin_list(
@@ -856,6 +870,7 @@ class PaymentService:
         venue_id: UUID | None = None,
         created_from: datetime | None = None,
         created_before: datetime | None = None,
+        refund_status: str | None = None,
     ) -> AdminPaymentPage:
         stmt = (
             select(Payment, Booking, Venue.name)
@@ -868,6 +883,14 @@ class PaymentService:
             stmt = stmt.where(Payment.review_required == review_required)
         if venue_id is not None:
             stmt = stmt.where(Payment.venue_id == venue_id)
+        if refund_status == "none":
+            stmt = stmt.where(~select(Refund.id).where(Refund.payment_id == Payment.id).exists())
+        elif refund_status:
+            stmt = stmt.where(
+                select(Refund.id)
+                .where(Refund.payment_id == Payment.id, Refund.status == refund_status)
+                .exists()
+            )
         if created_from is not None:
             stmt = stmt.where(Payment.created_at >= created_from)
         if created_before is not None:
@@ -887,8 +910,9 @@ class PaymentService:
                 stmt.order_by(Payment.created_at.desc(), Payment.id).limit(limit + 1).offset(offset)
             )
         ).all()
+        sums = await self._refund_sums([p.id for p, _, _ in rows[:limit]])
         return AdminPaymentPage(
-            items=[self._admin_out(p, b, vn) for p, b, vn in rows[:limit]],
+            items=[self._admin_out(p, b, vn, *sums.get(p.id, (0, 0))) for p, b, vn in rows[:limit]],
             limit=limit,
             offset=offset,
             has_more=len(rows) > limit,
@@ -912,9 +936,17 @@ class PaymentService:
                 .order_by(PaymentEvent.created_at)
             )
         ).all()
-        base = self._admin_out(*row)
+        from app.services.refunds import RefundService
+
+        sums = await self._refund_sums([payment_id])
+        base = self._admin_out(*row, *sums.get(payment_id, (0, 0)))
+        rsvc = RefundService(self.s, self.settings, self.gw)
+        refunds = await rsvc.for_payment(payment_id)
+        pay = await self.s.get(Payment, payment_id)
         return AdminPaymentDetail(
             **base.model_dump(),
+            refunds=refunds,
+            refund_availability=await rsvc.availability(pay) if pay else None,
             events=[
                 PaymentEventOut(
                     id=e.id,
@@ -930,6 +962,8 @@ class PaymentService:
         )
 
     async def admin_summary(self) -> AdminPaymentSummary:
+        from app.services.refunds import RefundService
+
         gross, captured = (
             await self.s.execute(
                 select(func.coalesce(func.sum(Payment.amount_paise), 0), func.count(Payment.id)).where(
@@ -957,5 +991,5 @@ class PaymentService:
             open_count=int(sum(counts.get(s, 0) for s in (pst.CREATED, pst.PENDING, pst.AUTHORIZED))),
             review_required_count=int(review),
             rejected_events_count=int(rejected),
-            refunds=_unavailable("Refund totals"),
+            refunds=await RefundService(self.s, self.settings, self.gw).summary(),
         )

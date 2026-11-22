@@ -174,6 +174,7 @@ String statusLabelFor(String status) => switch (status) {
       'expired' => 'Expired',
       'cancelled_by_customer' => 'Cancelled',
       'cancelled_by_owner' => 'Cancelled by venue',
+      'cancelled_by_admin' => 'Cancelled by ZURUV',
       'completed' => 'Completed',
       'refund_pending' => 'Refund pending',
       'refunded' => 'Refunded',

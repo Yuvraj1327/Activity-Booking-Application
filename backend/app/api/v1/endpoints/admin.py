@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, Request, Response
 
-from app.api.deps import AdminUser, DbSession
+from app.api.deps import AdminUser, DbSession, Perm, load_admin_permissions
 from app.core.errors import ValidationFailedError
 from app.domain.booking_state import TRANSITIONS
 from app.domain.payment_state import TRANSITIONS as PAYMENT_TRANSITIONS
@@ -30,6 +30,7 @@ from app.schemas.admin import (
 from app.schemas.catalog import Limit
 from app.schemas.payment import AdminPaymentDetail, AdminPaymentPage, AdminPaymentSummary
 from app.schemas.profile import ProfileOut
+from app.services import audit
 from app.services.admin import AdminService
 from app.services.payments import PaymentService
 
@@ -40,6 +41,7 @@ DateFrom = Annotated[date | None, Query(alias="from")]
 DateTo = Annotated[date | None, Query(alias="to")]
 SortOrder = Literal["asc", "desc"]
 AccountStatus = Literal["active", "suspended"]
+RefundFilter = Literal["none", "awaiting", "pending", "processed", "failed"]
 BOOKING_PAYMENT_STATUSES = {"unpaid", "pending", "paid", "failed", "refunded", "partially_refunded"}
 
 
@@ -51,16 +53,28 @@ def _pay(request: Request, session: DbSession) -> PaymentService:
     return PaymentService(session, request.app.state.settings, request.app.state.payment_gateway)
 
 
-@router.get("/me", response_model=ProfileOut, summary="Verify the caller is an authorised admin")
-async def admin_me(user: AdminUser) -> ProfileOut:
-    """Used by the admin web to confirm access server-side."""
-    return ProfileOut.model_validate(user.profile)
+class AdminMeOut(ProfileOut):
+    admin_role: str | None = None
+    permissions: list[str] = []
+
+
+@router.get("/me", response_model=AdminMeOut, summary="Verify the caller is an authorised admin")
+async def admin_me(user: AdminUser, session: DbSession) -> AdminMeOut:
+    """Used by the admin web to confirm access server-side. Also returns the caller's permissions
+    (empty when no role is assigned yet: the admin can sign in but sees nothing)."""
+    role, perms = await load_admin_permissions(session, user.id)
+    base = ProfileOut.model_validate(user.profile).model_dump()
+    return AdminMeOut(**base, admin_role=role, permissions=sorted(perms))
 
 
 # ------------------------------------------------------------------ dashboard and analytics
 @router.get("/dashboard", response_model=DashboardOut, summary="KPIs, trends and recent activity")
 async def dashboard(
-    request: Request, _: AdminUser, session: DbSession, date_from: DateFrom = None, date_to: DateTo = None
+    request: Request,
+    _: Perm("dashboard.view"),
+    session: DbSession,
+    date_from: DateFrom = None,
+    date_to: DateTo = None,
 ) -> DashboardOut:
     return await _svc(request, session).dashboard(date_from, date_to)
 
@@ -68,7 +82,7 @@ async def dashboard(
 @router.get("/analytics/bookings", response_model=BookingAnalytics, summary="Booking trends and status mix")
 async def analytics_bookings(
     request: Request,
-    _: AdminUser,
+    _: Perm("analytics.view"),
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
@@ -82,7 +96,7 @@ async def analytics_bookings(
 )
 async def analytics_revenue(
     request: Request,
-    _: AdminUser,
+    _: Perm("analytics.view"),
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
@@ -96,7 +110,7 @@ async def analytics_revenue(
 )
 async def analytics_platform(
     request: Request,
-    _: AdminUser,
+    _: Perm("analytics.view"),
     session: DbSession,
     date_from: DateFrom = None,
     date_to: DateTo = None,
@@ -106,15 +120,126 @@ async def analytics_platform(
 
 
 @router.get("/activity", response_model=ActivityPage, summary="Latest platform events")
-async def activity(request: Request, _: AdminUser, session: DbSession, limit: Limit = 20) -> ActivityPage:
+async def activity(
+    request: Request, _: Perm("dashboard.view"), session: DbSession, limit: Limit = 20
+) -> ActivityPage:
     return ActivityPage(items=await _svc(request, session).activity(limit))
+
+
+@router.get("/analytics/sports", summary="Bookings per sport (each booking split across a venue's sports)")
+async def analytics_sports(
+    request: Request,
+    _: Perm("analytics.view"),
+    session: DbSession,
+    date_from: DateFrom = None,
+    date_to: DateTo = None,
+) -> dict:
+    svc = _svc(request, session)
+    start, end = svc.resolve_range(date_from, date_to)
+    shares, none = await svc.sports_breakdown(start, end)
+    return {"range": svc._range_out(start, end), "items": shares, "uncategorised_bookings": none,
+            "note": "A venue with several sports splits each booking equally between them, so the shares add up to the real total."}  # fmt: skip
+
+
+@router.get("/analytics/cities", summary="Bookings and revenue per city")
+async def analytics_cities(
+    request: Request,
+    _: Perm("analytics.view"),
+    session: DbSession,
+    date_from: DateFrom = None,
+    date_to: DateTo = None,
+) -> dict:
+    svc = _svc(request, session)
+    start, end = svc.resolve_range(date_from, date_to)
+    return {"range": svc._range_out(start, end), "items": await svc.cities_breakdown(start, end)}
+
+
+@router.get("/analytics/venues", summary="Venue-wise booking performance")
+async def analytics_venues(
+    request: Request,
+    _: Perm("analytics.view"),
+    session: DbSession,
+    date_from: DateFrom = None,
+    date_to: DateTo = None,
+    city_id: UUID | None = None,
+    category_id: UUID | None = None,
+    owner_id: UUID | None = None,
+    sort: Literal["bookings", "revenue", "cancellations", "name"] = "bookings",
+    order: SortOrder = "desc",
+    limit: Limit = 20,
+    offset: Offset = 0,
+) -> dict:
+    svc = _svc(request, session)
+    start, end = svc.resolve_range(date_from, date_to)
+    items, more = await svc.venues_performance(
+        start, end, city_id=city_id, category_id=category_id, owner_id=owner_id, sort=sort, order=order,
+        limit=limit, offset=offset,
+    )  # fmt: skip
+    return {
+        "range": svc._range_out(start, end),
+        "items": items,
+        "limit": limit,
+        "offset": offset,
+        "has_more": more,
+    }
+
+
+@router.get("/exports/analytics.csv", summary="Sport / city / venue analytics CSV")
+async def export_analytics(
+    request: Request,
+    admin: Perm("exports.download"),
+    session: DbSession,
+    dimension: Literal["sport", "city", "venue"] = "sport",
+    date_from: DateFrom = None,
+    date_to: DateTo = None,
+) -> Response:
+    svc = _svc(request, session)
+    start, end = svc.resolve_range(date_from, date_to)
+    if dimension == "sport":
+        shares, _none = await svc.sports_breakdown(start, end)
+        header = ["sport", "bookings_split", "bookings_tagged", "venues", "gross_paid_paise"]
+        rows = [[x.category, x.bookings, x.tagged_bookings, x.venues, x.gross_paid_paise] for x in shares]
+    elif dimension == "city":
+        header = [
+            "city",
+            "published_venues",
+            "bookings",
+            "confirmed",
+            "completed",
+            "cancelled",
+            "gross_paid_paise",
+        ]
+        rows = [[c.city, c.venues, c.bookings, c.confirmed, c.completed, c.cancelled, c.gross_paid_paise]
+                for c in await svc.cities_breakdown(start, end)]  # fmt: skip
+    else:
+        cap = request.app.state.settings.admin_export_max_rows
+        items, _m = await svc.venues_performance(start, end, city_id=None, category_id=None, owner_id=None,
+                                                  sort="bookings", order="desc", limit=min(cap, 5000), offset=0)  # fmt: skip
+        header = [
+            "venue",
+            "city",
+            "status",
+            "bookings",
+            "confirmed",
+            "completed",
+            "cancelled",
+            "cancellation_rate_percent",
+            "gross_paid_paise",
+            "rating",
+        ]
+        rows = [[v.name, v.city, v.status, v.bookings, v.confirmed, v.completed, v.cancelled,
+                 v.cancellation_rate_percent, v.gross_paid_paise, v.rating_avg] for v in items]  # fmt: skip
+    audit.record(session, admin.profile, "admin.export", f"analytics_{dimension}", None, rows=len(rows),
+                 filters={"from": str(start), "to": str(end)})  # fmt: skip
+    await session.commit()
+    return _csv(svc._csv(header, rows), f"zuruv-analytics-{dimension}.csv")
 
 
 # ------------------------------------------------------------------ owners
 @router.get("/owners", response_model=OwnerPage, summary="Venue owners (search, filter, sort)")
 async def list_owners(
     request: Request,
-    _: AdminUser,
+    _: Perm("owners.view"),
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
     status_filter: Annotated[AccountStatus | None, Query(alias="status")] = None,
@@ -127,8 +252,35 @@ async def list_owners(
 
 
 @router.get("/owners/{owner_id}", response_model=OwnerDetail, summary="Owner profile, venues and activity")
-async def get_owner(owner_id: UUID, request: Request, _: AdminUser, session: DbSession) -> OwnerDetail:
+async def get_owner(
+    owner_id: UUID, request: Request, _: Perm("owners.view"), session: DbSession
+) -> OwnerDetail:
     return await _svc(request, session).get_owner(owner_id)
+
+
+@router.get("/owners/{owner_id}/history", summary="Account actions on this owner (suspensions, KYC, ...)")
+async def owner_history(
+    owner_id: UUID,
+    request: Request,
+    _: Perm("owners.view"),
+    session: DbSession,
+    limit: Limit = 20,
+    offset: Offset = 0,
+) -> AuditPage:
+    return await _svc(request, session).account_history(owner_id, limit, offset)
+
+
+@router.get("/owners/{owner_id}/payouts", summary="Payout history of an owner")
+async def owner_payouts(
+    owner_id: UUID, _: Perm("finance.view"), session: DbSession, limit: Limit = 20, offset: Offset = 0
+) -> dict:
+    from app.services.ledger import FinanceService
+
+    svc = FinanceService(session)
+    return {
+        "balance": await svc.owner_balance(owner_id),
+        **await svc.list_payouts(owner_id=owner_id, status=None, limit=limit, offset=offset),
+    }
 
 
 @router.patch(
@@ -137,7 +289,7 @@ async def get_owner(owner_id: UUID, request: Request, _: AdminUser, session: DbS
     summary="Suspend or reactivate an owner (audited)",
 )
 async def set_owner_status(
-    owner_id: UUID, body: StatusChange, request: Request, admin: AdminUser, session: DbSession
+    owner_id: UUID, body: StatusChange, request: Request, admin: Perm("owners.manage"), session: DbSession
 ) -> StatusChangeOut:
     return await _svc(request, session).change_status(
         admin.profile, owner_id, "owner", body.status, body.reason
@@ -148,7 +300,7 @@ async def set_owner_status(
 @router.get("/customers", response_model=CustomerPage, summary="Customers (search, filter, sort)")
 async def list_customers(
     request: Request,
-    _: AdminUser,
+    _: Perm("customers.view"),
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
     status_filter: Annotated[AccountStatus | None, Query(alias="status")] = None,
@@ -164,9 +316,21 @@ async def list_customers(
     "/customers/{customer_id}", response_model=CustomerDetail, summary="Customer profile and booking history"
 )
 async def get_customer(
-    customer_id: UUID, request: Request, _: AdminUser, session: DbSession
+    customer_id: UUID, request: Request, _: Perm("customers.view"), session: DbSession
 ) -> CustomerDetail:
     return await _svc(request, session).get_customer(customer_id)
+
+
+@router.get("/customers/{customer_id}/history", summary="Account actions on this customer")
+async def customer_history(
+    customer_id: UUID,
+    request: Request,
+    _: Perm("customers.view"),
+    session: DbSession,
+    limit: Limit = 20,
+    offset: Offset = 0,
+) -> AuditPage:
+    return await _svc(request, session).account_history(customer_id, limit, offset)
 
 
 @router.patch(
@@ -175,7 +339,11 @@ async def get_customer(
     summary="Suspend or reactivate a customer (audited)",
 )
 async def set_customer_status(
-    customer_id: UUID, body: StatusChange, request: Request, admin: AdminUser, session: DbSession
+    customer_id: UUID,
+    body: StatusChange,
+    request: Request,
+    admin: Perm("customers.manage"),
+    session: DbSession,
 ) -> StatusChangeOut:
     return await _svc(request, session).change_status(
         admin.profile, customer_id, "customer", body.status, body.reason
@@ -186,10 +354,13 @@ async def set_customer_status(
 @router.get("/venues", response_model=VenuePage, summary="All venues (read-only monitoring)")
 async def list_venues(
     request: Request,
-    _: AdminUser,
+    _: Perm("venues.view"),
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
-    status_filter: Annotated[Literal["draft", "published", "archived"] | None, Query(alias="status")] = None,
+    status_filter: Annotated[
+        Literal["draft", "pending_review", "published", "rejected", "suspended", "archived"] | None,
+        Query(alias="status"),
+    ] = None,
     city_id: UUID | None = None,
     category_id: UUID | None = None,
     owner_id: UUID | None = None,
@@ -204,7 +375,9 @@ async def list_venues(
 
 
 @router.get("/venues/{venue_id}", response_model=VenueDetail, summary="Venue detail (read-only)")
-async def get_venue(venue_id: UUID, request: Request, _: AdminUser, session: DbSession) -> VenueDetail:
+async def get_venue(
+    venue_id: UUID, request: Request, _: Perm("venues.view"), session: DbSession
+) -> VenueDetail:
     return await _svc(request, session).get_venue(venue_id)
 
 
@@ -214,7 +387,7 @@ async def get_venue(venue_id: UUID, request: Request, _: AdminUser, session: DbS
 )
 async def admin_bookings(
     request: Request,
-    _: AdminUser,
+    _: Perm("bookings.view"),
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
@@ -222,6 +395,9 @@ async def admin_bookings(
     venue_id: UUID | None = None,
     owner_id: UUID | None = None,
     customer_id: UUID | None = None,
+    category_id: UUID | None = None,
+    city_id: UUID | None = None,
+    refund_status: RefundFilter | None = None,
     date_from: DateFrom = None,
     date_to: DateTo = None,
     limit: Limit = 20,
@@ -244,6 +420,9 @@ async def admin_bookings(
         date_to=date_to,
         limit=limit,
         offset=offset,
+        category_id=category_id,
+        city_id=city_id,
+        refund_status=refund_status,
     )
 
 
@@ -253,26 +432,29 @@ async def admin_bookings(
     summary="Booking with history and payments",
 )
 async def admin_booking(
-    booking_id: UUID, request: Request, _: AdminUser, session: DbSession
+    booking_id: UUID, request: Request, _: Perm("bookings.view"), session: DbSession
 ) -> AdminBookingDetailOut:
     return await _svc(request, session).get_booking(booking_id, _pay(request, session))
 
 
 # ------------------------------------------------------------------ payments (read-only)
 @router.get("/payments/summary", response_model=AdminPaymentSummary, summary="Payment totals and counts")
-async def payments_summary(request: Request, _: AdminUser, session: DbSession) -> AdminPaymentSummary:
+async def payments_summary(
+    request: Request, _: Perm("payments.view"), session: DbSession
+) -> AdminPaymentSummary:
     return await _pay(request, session).admin_summary()
 
 
 @router.get("/payments", response_model=AdminPaymentPage, summary="All payments (read-only)")
 async def admin_payments(
     request: Request,
-    _: AdminUser,
+    _: Perm("payments.view"),
     session: DbSession,
     q: Annotated[str | None, Query(max_length=100)] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     review_required: bool | None = None,
     venue_id: UUID | None = None,
+    refund_status: Literal["none", "requested", "pending", "processed", "failed", "uncertain"] | None = None,
     date_from: DateFrom = None,
     date_to: DateTo = None,
     limit: Limit = 20,
@@ -293,6 +475,7 @@ async def admin_payments(
         venue_id=venue_id,
         created_from=lo,
         created_before=hi,
+        refund_status=refund_status,
     )
 
 
@@ -300,7 +483,7 @@ async def admin_payments(
     "/payments/{payment_id}", response_model=AdminPaymentDetail, summary="Payment with gateway events"
 )
 async def admin_payment(
-    payment_id: UUID, request: Request, _: AdminUser, session: DbSession
+    payment_id: UUID, request: Request, _: Perm("payments.view"), session: DbSession
 ) -> AdminPaymentDetail:
     return await _pay(request, session).admin_get(payment_id)
 
@@ -317,11 +500,15 @@ def _csv(body: str, name: str) -> Response:
 @router.get("/exports/bookings.csv", summary="Bookings CSV (no customer contact details)")
 async def export_bookings(
     request: Request,
-    admin: AdminUser,
+    admin: Perm("exports.download"),
     session: DbSession,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     payment_status: str | None = None,
     venue_id: UUID | None = None,
+    owner_id: UUID | None = None,
+    category_id: UUID | None = None,
+    city_id: UUID | None = None,
+    refund_status: RefundFilter | None = None,
     date_from: DateFrom = None,
     date_to: DateTo = None,
 ) -> Response:
@@ -336,6 +523,10 @@ async def export_bookings(
         venue_id=venue_id,
         date_from=date_from,
         date_to=date_to,
+        owner_id=owner_id,
+        category_id=category_id,
+        city_id=city_id,
+        refund_status=refund_status,
     )
     return _csv(body, "zuruv-bookings.csv")
 
@@ -343,7 +534,7 @@ async def export_bookings(
 @router.get("/exports/payments.csv", summary="Transactions CSV (no card data)")
 async def export_payments(
     request: Request,
-    admin: AdminUser,
+    admin: Perm("exports.download"),
     session: DbSession,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     date_from: DateFrom = None,
@@ -358,12 +549,12 @@ async def export_payments(
 
 
 @router.get("/exports/customers.csv", summary="Customer report CSV (no e-mail or phone)")
-async def export_customers(request: Request, admin: AdminUser, session: DbSession) -> Response:
+async def export_customers(request: Request, admin: Perm("exports.download"), session: DbSession) -> Response:
     return _csv(await _svc(request, session).export_people(admin.profile, "customer"), "zuruv-customers.csv")
 
 
 @router.get("/exports/owners.csv", summary="Owner report CSV (no e-mail or phone)")
-async def export_owners(request: Request, admin: AdminUser, session: DbSession) -> Response:
+async def export_owners(request: Request, admin: Perm("exports.download"), session: DbSession) -> Response:
     return _csv(await _svc(request, session).export_people(admin.profile, "owner"), "zuruv-owners.csv")
 
 
@@ -371,11 +562,29 @@ async def export_owners(request: Request, admin: AdminUser, session: DbSession) 
 @router.get("/audit-logs", response_model=AuditPage, summary="Audit trail of sensitive actions")
 async def audit_logs(
     request: Request,
-    _: AdminUser,
+    _: Perm("audit.view"),
     session: DbSession,
-    action: Annotated[str | None, Query(max_length=60)] = None,
+    action: Annotated[str | None, Query(max_length=100)] = None,
     entity_type: Annotated[str | None, Query(max_length=60)] = None,
+    entity_id: Annotated[str | None, Query(max_length=100)] = None,
+    actor_id: UUID | None = None,
+    date_from: DateFrom = None,
+    date_to: DateTo = None,
     limit: Limit = 20,
     offset: Offset = 0,
 ) -> AuditPage:
-    return await _svc(request, session).list_audit(action, entity_type, limit, offset)
+    return await _svc(request, session).list_audit(
+        action,
+        entity_type,
+        limit,
+        offset,
+        entity_id=entity_id,
+        actor_id=actor_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.get("/audit-actions", summary="Action names that appear in the audit log (for the filter)")
+async def audit_actions(request: Request, _: Perm("audit.view"), session: DbSession) -> dict:
+    return {"items": await _svc(request, session).audit_actions()}

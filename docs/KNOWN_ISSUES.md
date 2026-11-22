@@ -20,18 +20,21 @@ Severity: **High** = blocks a safe production launch; **Medium** = launch-able w
 | 7 | `available_today` scans at most 150 candidate venues per request | Adequate for a city-sized catalogue; revisit with a pre-computed index at scale. |
 | 8 | Owner block times use the device time zone | Step 6 note; venue-local time zone entry would be safer. |
 | 9 | Phone/Google/Apple sign-in are off by default and unverified | Need Supabase provider setup (N24); enable via env flags only after configuring. |
-| 10 | Admin suspension does not touch existing bookings; no "inactive" state | Q18. |
+| 10 | Admin suspension (account or venue) does not touch existing bookings; no "inactive" state | Q18. The venue page shows how many upcoming bookings are affected. |
+| 13 | **Admin operations are untested against live services**: Razorpay refunds / refund webhooks / payment listing, Supabase Storage (KYC), and the Flutter changes on a device. Payout gateway integration does not exist. | `docs/ADMIN_OPERATIONS.md` §2 and §6. Run a test-mode refund before enabling refunds. |
+| 14 | Flutter has no screens yet for KYC upload, reporting a venue, support replies or entering a coupon code (the APIs exist and are tested). | Add when the client confirms the flows. |
+| 15 | Edits to an already-approved venue do not trigger re-review. | Policy question for the client (Q4). |
 | 11 | No Crashlytics/Sentry | N26 not approved; logs only. |
 | 12 | Git history was never scanned for secrets (no commits existed) | Run the scanner / a history scanner after the first commit. |
 
 ## Low
 
 - Address search costs money per request once a Google key is added (N27a); directions use a free Google Maps link.
-- Admin has no permission-editing screen: roles are fixed, admins are promoted by operator script.
+- Admins are still created by the operator script (`create_admin --role …`); roles and permissions are edited in the console (Admin roles).
 - Pagination in the admin uses offset paging; very deep pages are slower.
 - Reference images exist only for the customer and owner apps; the admin follows the shared design language (no admin mockups were supplied).
 - Android `<queries>` for https links is added by `scripts/configure_customer_platforms.py`; re-run it after regenerating platform folders.
-- Settings: support tickets (`support_tickets`) and account-deletion requests (`profiles.deletion_requested_at`) have no admin screen yet; operators read/process them in the database. App language only affects dates, numbers and system dialogs. Dark mode is complete for shared components; some one-off screens may still use fixed light colours (check on device).
+- Settings: support tickets (`support_tickets`) and account-deletion requests (`profiles.deletion_requested_at`) — tickets now have an admin screen; account-deletion requests are still processed by operators in the database. App language only affects dates, numbers and system dialogs. Dark mode is complete for shared components; some one-off screens may still use fixed light colours (check on device).
 
 ## Credentials and accounts you must supply
 

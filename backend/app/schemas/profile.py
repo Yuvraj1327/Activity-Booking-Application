@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 
 Phone = Annotated[str, StringConstraints(pattern=r"^\+[1-9][0-9]{6,14}$")]
 PersonName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
@@ -142,3 +142,9 @@ class SupportTicketOut(BaseModel):
     subject: str
     status: Literal["open", "closed"]
     created_at: datetime
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _app_status(cls, v: str) -> str:
+        """The mobile app only knows open / closed. Admin-side states map onto them."""
+        return {"in_progress": "open", "resolved": "closed"}.get(v, v)

@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter
 
 from app.api.deps import AnyUser, DbSession
@@ -40,3 +42,32 @@ async def create_ticket(body: SupportTicketCreate, user: AnyUser, session: DbSes
 @support_router.get("/tickets", response_model=list[SupportTicketOut], summary="My support messages")
 async def my_tickets(user: AnyUser, session: DbSession) -> list[SupportTicketOut]:
     return [SupportTicketOut.model_validate(t) for t in await ProfileService(session).list_tickets(user.id)]
+
+
+@support_router.get(
+    "/tickets/{ticket_id}/messages", summary="Replies from the ZURUV team on one of my messages"
+)
+async def ticket_replies(ticket_id: UUID, user: AnyUser, session: DbSession) -> dict:
+    from sqlalchemy import select
+
+    from app.core.errors import NotFoundError
+    from app.models import SupportTicket, SupportTicketMessage
+
+    t = await session.scalar(
+        select(SupportTicket).where(SupportTicket.id == ticket_id, SupportTicket.user_id == user.id)
+    )
+    if t is None:
+        raise NotFoundError("Message not found.", code="TICKET_NOT_FOUND")
+    rows = (
+        await session.scalars(
+            select(SupportTicketMessage)
+            .where(SupportTicketMessage.ticket_id == ticket_id, SupportTicketMessage.kind == "reply")
+            .order_by(SupportTicketMessage.created_at)
+        )
+    ).all()
+    return {
+        "items": [
+            {"id": m.id, "body": m.body, "from_team": m.author_role == "admin", "created_at": m.created_at}
+            for m in rows
+        ]
+    }

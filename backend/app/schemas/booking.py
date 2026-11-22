@@ -59,6 +59,9 @@ class AvailableDatesOut(BaseModel):
 class BookingRequest(StrictModel):
     resource_id: UUID
     starts_at: datetime
+    coupon_code: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=30)] | None
+    ) = None
 
     @field_validator("starts_at")
     @classmethod
@@ -85,6 +88,7 @@ class QuoteOut(BaseModel):
     discount_paise: int
     total_amount_paise: int
     note: str
+    coupon_code: str | None = None  # set only when a coupon really reduced the price
 
 
 class StatusEvent(BaseModel):

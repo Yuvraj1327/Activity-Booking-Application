@@ -174,7 +174,11 @@ TABLES = [
     "venue_categories", "venue_amenities", "venue_images", "venue_resources", "notifications", "audit_logs", "favorites",
     "schedule_rules", "schedule_exceptions", "bookings", "booking_slots", "booking_status_history",
     "availability_blocks", "payments", "payment_events", "user_device_tokens", "notification_preferences",
-    "email_deliveries", "reviews", "review_responses",
+    "email_deliveries", "reviews", "review_responses", "support_tickets",
+    "platform_settings", "admin_roles", "admin_profiles", "venue_moderation_events", "venue_reports",
+    "owner_kyc_documents", "support_ticket_messages", "disputes", "dispute_events", "refunds",
+    "finance_configs", "ledger_entries", "payouts", "reconciliation_runs", "reconciliation_items",
+    "coupons", "coupon_redemptions", "cms_contents",
 ]  # fmt: skip
 
 

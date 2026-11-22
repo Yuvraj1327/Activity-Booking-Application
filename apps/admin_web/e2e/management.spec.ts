@@ -33,15 +33,18 @@ test.describe("owners", () => {
     await expect(page.getByTestId("empty-state")).toBeVisible();
   });
 
-  test("owner detail shows contact, venues (read-only), booking activity", async ({ page }) => {
+  test("owner detail shows contact, KYC, venues, paginated booking history and account history", async ({ page }) => {
     const id = users()["priya@example.com"].id;
     await page.goto(`/owners/${id}`);
     await expect(page.getByRole("heading", { name: "Priya Sharma" })).toBeVisible();
     await expect(page.getByText("priya@example.com").first()).toBeVisible();
     await expect(page.getByText("12 MG Road, Bengaluru")).toBeVisible();
     await expect(page.getByRole("link", { name: "Smash Arena Koramangala" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Recent booking activity" })).toBeVisible();
-    // no edit/delete/publish controls for admins
+    await expect(page.getByRole("heading", { name: "Booking history at this owner's venues" })).toBeVisible();
+    await expect(page.getByTestId("kyc-panel")).toBeVisible();
+    await expect(page.getByTestId("payout-history")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Account action history" })).toBeVisible();
+    // an owner's content is not editable by admins
     await expect(page.getByRole("button", { name: /edit|delete|publish|remove/i })).toHaveCount(0);
   });
 
@@ -59,7 +62,7 @@ test.describe("owners", () => {
     // browser-level validation: a reason is required
     await page.getByTestId("status-confirm").click();
     await expect(page.getByTestId("status-result")).toHaveCount(0);
-    await page.getByLabel("Reason").fill("Repeated policy complaints");
+    await page.locator("dialog[open]").getByLabel("Reason").fill("Repeated policy complaints");
     await page.getByTestId("status-confirm").click();
     await expect(page.getByTestId("status-result")).toContainText("recorded in the audit log");
     await page.getByRole("button", { name: "Close" }).click();
@@ -74,12 +77,12 @@ test.describe("owners", () => {
     await page.goto("/audit?action=admin.account_status_changed");
     await expect(rows(page).first()).toContainText("admin.account_status_changed");
     await expect(rows(page).first()).toContainText("Repeated policy complaints");
-    await expect(rows(page).first()).toContainText("to: suspended");
+    await expect(rows(page).first()).toContainText("active → suspended");
 
     // reactivate
     await page.goto(`/owners/${rahul}`);
     await page.getByTestId("status-open").click();
-    await page.getByLabel("Reason").fill("Cleared after review");
+    await page.locator("dialog[open]").getByLabel("Reason").fill("Cleared after review");
     await page.getByTestId("status-confirm").click();
     await expect(page.getByTestId("status-result")).toContainText("audit log");
     const ok = await request.get("http://127.0.0.1:8018/api/v1/owners/dashboard", { headers: { Authorization: `Bearer ${ownerToken}` } });
@@ -140,19 +143,20 @@ test.describe("venue monitoring", () => {
     await expect(smash).toContainText("Bengaluru");
     await expect(smash).toContainText("Priya Sharma");
     await expect(page.getByRole("button", { name: /edit|delete|publish/i })).toHaveCount(0);
-    await page.getByLabel("Publication").selectOption("draft");
+    await page.locator("select[name=status]").selectOption("draft");
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(rows(page)).toHaveCount(1);
     await expect(rows(page).first()).toContainText("Blue Lagoon Annex");
   });
 
-  test("venue detail is read-only and links to the venue's bookings", async ({ page }) => {
+  test("venue detail shows moderation actions and links to the venue's bookings", async ({ page }) => {
     await page.goto("/venues?q=greenfield");
     await page.getByRole("link", { name: "Greenfield Turf" }).click();
-    await expect(page.getByText("Read-only. The owner manages this listing.")).toBeVisible();
+    await expect(page.getByText("Owners edit their own listings.")).toBeVisible();
+    await expect(page.getByTestId("moderation-actions")).toBeVisible();
     await page.getByRole("link", { name: "View bookings" }).click();
     await expect(page).toHaveURL(/venue_id=/);
-    await expect(page.getByText("Filtered to one venue")).toBeVisible();
+    await expect(page.locator("select[name=venue_id]")).not.toHaveValue("");
     for (const r of await rows(page).all()) await expect(r).toContainText("Greenfield Turf");
   });
 });

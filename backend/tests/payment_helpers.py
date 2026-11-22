@@ -11,7 +11,13 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 from app.core.errors import ServiceUnavailableError
-from app.gateways.razorpay import GatewayOrder, GatewayPayment, RazorpayGateway
+from app.gateways.razorpay import (
+    GatewayOrder,
+    GatewayPayment,
+    GatewayRefund,
+    GatewayUncertainError,
+    RazorpayGateway,
+)
 from app.gateways.resend import EmailMessage, EmailSendError
 from app.main import create_app
 from tests.booking_helpers import API, book, future_day, iso, seed_world
@@ -44,6 +50,11 @@ class FakeGateway(RazorpayGateway):
         self.unreachable = False
         self.capture_calls: list[str] = []
         self.create_calls = 0
+        # refunds
+        self.refunds: dict[str, GatewayRefund] = {}
+        self.refund_keys: dict[str, str] = {}
+        self.refund_calls = 0
+        self.refund_mode = "pending"  # pending | processed | failed | reject | timeout | timeout_but_created
 
     def _check(self) -> None:
         if self.unreachable:
@@ -75,6 +86,42 @@ class FakeGateway(RazorpayGateway):
         )
         self.payments[payment_id] = new
         return new
+
+    async def create_refund(
+        self, payment_id: str, amount_paise: int, *, receipt: str, idempotency_key: str, notes: dict[str, str]
+    ) -> GatewayRefund:
+        self._check()
+        self.refund_calls += 1
+        if idempotency_key in self.refund_keys:  # real Razorpay replays the original result
+            return self.refunds[self.refund_keys[idempotency_key]]
+        if self.refund_mode == "reject":
+            raise ServiceUnavailableError(
+                "rejected",
+                code="PAYMENT_PROVIDER_ERROR",
+                details={"description": "The refund amount is greater than refundable."},
+            )
+        if self.refund_mode == "timeout":
+            raise GatewayUncertainError("timeout", code="PAYMENT_PROVIDER_TIMEOUT")
+        status = {"timeout_but_created": "pending"}.get(self.refund_mode, self.refund_mode)
+        gr = GatewayRefund(f"rfnd_{uuid.uuid4().hex[:14]}", payment_id, amount_paise, status, receipt)
+        self.refunds[gr.id] = gr
+        self.refund_keys[idempotency_key] = gr.id
+        if self.refund_mode == "timeout_but_created":
+            raise GatewayUncertainError("timeout", code="PAYMENT_PROVIDER_TIMEOUT")
+        return gr
+
+    async def fetch_payment_refunds(self, payment_id: str) -> list[GatewayRefund]:
+        self._check()
+        return [r for r in self.refunds.values() if r.payment_id == payment_id]
+
+    def set_refund_status(self, refund_id: str, status: str) -> GatewayRefund:
+        old = self.refunds[refund_id]
+        self.refunds[refund_id] = GatewayRefund(old.id, old.payment_id, old.amount_paise, status, old.receipt)
+        return self.refunds[refund_id]
+
+    async def list_payments_between(self, start_ts: int, end_ts: int) -> list[GatewayPayment]:
+        self._check()
+        return list(self.payments.values())
 
     # ---- test controls
     def customer_pays(
@@ -172,6 +219,27 @@ def webhook(
     }
 
 
+def refund_webhook(
+    event: str, refund: GatewayRefund, *, event_id: str | None = None, secret: str = WEBHOOK_SECRET
+) -> tuple[bytes, dict[str, str]]:
+    entity = {
+        "id": refund.id, "payment_id": refund.payment_id, "amount": refund.amount_paise,
+        "status": refund.status, "receipt": refund.receipt,
+    }  # fmt: skip
+    body = json.dumps(
+        {
+            "event": event,
+            "payload": {"refund": {"entity": entity}, "payment": {"entity": {"id": refund.payment_id}}},
+        }
+    ).encode()
+    sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return body, {
+        "X-Razorpay-Signature": sig,
+        "X-Razorpay-Event-Id": event_id or f"evt_{uuid.uuid4().hex[:12]}",
+        "Content-Type": "application/json",
+    }
+
+
 def post_webhook(env: Env, body: bytes, headers: dict[str, str]):
     return env.api.post(f"{API}/payments/webhook", content=body, headers=headers)
 
@@ -228,6 +296,7 @@ __all__ = [
     "paid_booking",
     "payment_app",
     "post_webhook",
+    "refund_webhook",
     "rows",
     "seed_world",
     "sign_checkout",

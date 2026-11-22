@@ -97,6 +97,8 @@ class OwnerVenueCard {
   final int ratingCount;
 
   bool get isPublished => status == 'published';
+  bool get isPendingReview => status == 'pending_review';
+  bool get isSuspended => status == 'suspended';
 }
 
 class OwnerVenueDetail {
@@ -566,6 +568,7 @@ String bookingStatusLabel(String status) => switch (status) {
       'expired' => 'Expired',
       'cancelled_by_customer' => 'Cancelled by customer',
       'cancelled_by_owner' => 'Cancelled by venue',
+      'cancelled_by_admin' => 'Cancelled by ZURUV',
       'completed' => 'Completed',
       'refund_pending' => 'Refund pending',
       'refunded' => 'Refunded',

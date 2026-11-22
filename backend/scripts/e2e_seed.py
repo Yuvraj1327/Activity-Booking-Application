@@ -146,7 +146,7 @@ def main(out: Path) -> None:
         )
         assert v.status_code == 200, v.text
 
-    with payment_app(db) as env:
+    with payment_app(db, rate_limit_per_minute=0) as env:
         n = 0
         for wi, w in enumerate(worlds):
             for ci, (_uid, h) in enumerate(custs[:4]):
@@ -178,6 +178,37 @@ def main(out: Path) -> None:
             )
             assert r.status_code == 201, r.text
             users[email] = {"id": str(uid), "role": role}
+
+    # A second administrator with a deliberately narrow role, to prove permissions are enforced end to end.
+    agent_role = sql(
+        db,
+        "INSERT INTO public.admin_roles (name, description, permissions) VALUES "
+        "('Support agent', 'Tickets and the dashboard only', ARRAY['support.manage','dashboard.view']) RETURNING id",
+    )[0]["id"]
+    agent = seed_profile(db, "admin", name="Sam Support", email="limited@zuruv.test", grant=None)
+    sql(db, "INSERT INTO public.admin_profiles (user_id, role_id) VALUES ($1,$2)", agent, agent_role)
+    users["limited@zuruv.test"] = {"id": str(agent), "role": "admin"}
+    # And one with NO role at all (the state of a freshly created administrator).
+    bare = seed_profile(db, "admin", name="Nia NoRole", email="norole@zuruv.test", grant=None)
+    users["norole@zuruv.test"] = {"id": str(bare), "role": "admin"}
+    # A support ticket from a customer, and a KYC document waiting for review (no file is stored: e2e has no Storage).
+    sql(
+        db,
+        "INSERT INTO public.support_tickets (user_id, kind, subject, message) VALUES ($1,'issue','Charged twice for one booking','I was charged twice for my badminton booking yesterday.')",
+        uuid.UUID(users["aarav@example.com"]["id"]),
+    )
+    sql(
+        db,
+        "INSERT INTO public.owner_kyc_documents (owner_id, doc_type, storage_path, original_filename, content_type, byte_size) "
+        "VALUES ($1,'identity',$2,'id.pdf','application/pdf',2048)",
+        uuid.UUID(users["priya@example.com"]["id"]),
+        f"{users['priya@example.com']['id']}/seed.pdf",
+    )
+    sql(
+        db,
+        "UPDATE public.owner_profiles SET kyc_status='pending' WHERE user_id=$1",
+        uuid.UUID(users["priya@example.com"]["id"]),
+    )
 
     sql(db, "UPDATE public.profiles SET status='suspended' WHERE email='neel@example.com'")
 

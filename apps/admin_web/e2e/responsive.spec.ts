@@ -29,10 +29,10 @@ test.describe("responsive layout", () => {
     await page.goto("/dashboard");
     const nav = page.getByRole("navigation", { name: "Main", exact: true });
     await expect(nav).toBeVisible();
-    const width = (await page.locator("aside").boundingBox())!.width;
+    const width = (await page.locator("aside").first().boundingBox())!.width;
     if (info.project.name === "tablet") {
       expect(width).toBeLessThan(100);
-      await expect(page.locator("aside").getByText("Dashboard", { exact: true }).first()).toBeHidden();
+      await expect(page.locator("aside").first().getByText("Dashboard", { exact: true }).first()).toBeHidden();
       await expect(nav.getByRole("link", { name: "Bookings" })).toBeVisible(); // still reachable by accessible name
     } else {
       expect(width).toBeGreaterThan(200);

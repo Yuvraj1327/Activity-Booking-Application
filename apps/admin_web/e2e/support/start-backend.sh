@@ -13,4 +13,7 @@ export DATABASE_URL="$(cat "$OUT/db_url.txt")"
 export ENVIRONMENT=development LOG_JSON=false BACKGROUND_SWEEP_SECONDS=0
 export SUPABASE_URL="https://e2e.supabase.co" SUPABASE_JWT_SECRET="${E2E_JWT_SECRET:?E2E_JWT_SECRET is required}"
 export ADMIN_REQUIRE_MFA=true
+# A developer's backend/.env must never leak into the e2e stack (a real JWKS URL / issuer would reject the mock tokens).
+export SUPABASE_JWKS_URL="" SUPABASE_JWT_ISSUER="" SUPABASE_SERVICE_ROLE_KEY="" RAZORPAY_KEY_ID="" RAZORPAY_KEY_SECRET="" RAZORPAY_WEBHOOK_SECRET=""
+export RESEND_API_KEY="" FIREBASE_SERVICE_ACCOUNT="" FIREBASE_PROJECT_ID=""
 exec uvicorn app.main:app --host 127.0.0.1 --port "${E2E_API_PORT:-8018}"

@@ -5,9 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ArrowRight, Trophy } from "lucide-react";
-import { navGroups, settingsItem } from "@/lib/nav";
+import { settingsItem, visibleGroups } from "@/lib/nav";
 
-export function Sidebar() {
+export function Sidebar({ permissions }: { permissions: string[] }) {
   const pathname = usePathname();
   return (
     <aside className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-card md:flex md:w-[4.5rem] lg:w-72">
@@ -18,7 +18,7 @@ export function Sidebar() {
         <span className="ml-auto hidden rounded-full bg-primary-tint px-2 py-0.5 text-[10px] font-semibold uppercase text-primary lg:inline">Admin</span>
       </div>
       <nav aria-label="Main" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-2">
-        {navGroups.map((g) => (
+        {visibleGroups(permissions).map((g) => (
           <div key={g.title} className="flex flex-col gap-1">
             <p className="hidden px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground lg:block">{g.title}</p>
             {g.items.map(({ label, href, icon: Icon }) => {
@@ -45,7 +45,7 @@ export function Sidebar() {
       </nav>
       <div className="hidden px-3 pb-3 lg:[@media(min-height:880px)]:block">
         <Link
-          href="/venues"
+          href={permissions.includes("venues.view") ? "/venues" : "/dashboard"}
           className="relative block overflow-hidden rounded-2xl bg-gradient-to-br from-primary-tint to-card p-4 ring-1 ring-border transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           <Trophy className="absolute -right-2 -top-2 size-16 rotate-12 text-primary/15" aria-hidden />

@@ -16,6 +16,16 @@ class FakeSettingsRepository implements SettingsRepository {
   bool failNext;
   UserProfile? profile;
 
+  /// Published admin content, keyed by slug (the real API only returns published entries).
+  final Map<String, Map<String, dynamic>> contentBySlug = {};
+  final List<Map<String, dynamic>> contentFaqs = [];
+
+  @override
+  Future<Map<String, dynamic>?> contentPage(String slug) async => contentBySlug[slug];
+
+  @override
+  Future<List<Map<String, dynamic>>> contentList({required String kind, required String audience}) async => contentFaqs;
+
   void _maybeFail() {
     if (failNext) {
       failNext = false;

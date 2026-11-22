@@ -192,6 +192,28 @@ void main() {
     });
   });
 
+  group('Content managed in the admin console', () {
+    testWidgets('published FAQs and legal pages replace the built-in text; nothing published keeps it', (tester) async {
+      final env = c.TestEnv();
+      env.settings.contentFaqs.add({'title': 'Can I bring my own racket?', 'body': 'Yes, always.'});
+      env.settings.contentBySlug['privacy'] = {'title': 'Our privacy promise', 'body': 'We keep your data safe.'};
+      await env.pump(tester);
+      await openSettings(tester, owner: false);
+      await openRow(tester, 'Help & support');
+      expect(find.text('Can I bring my own racket?'), findsOneWidget);
+      expect(find.text('How do I book a venue?'), findsNothing); // the managed list wins
+      GoRouter.of(tester.element(find.byType(Scaffold).last)).go('/settings/about');
+      await tester.pumpAndSettle();
+      await openRow(tester, 'Privacy Policy');
+      expect(find.text('We keep your data safe.'), findsOneWidget);
+      expect(find.textContaining('pending legal review'), findsNothing);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await openRow(tester, 'Terms & Conditions'); // nothing published for it: the honest built-in text stays
+      expect(find.textContaining('pending legal review'), findsOneWidget);
+    });
+  });
+
   group('Owner settings', () {
     testWidgets('hub, no sports section, own notification + help content', (tester) async {
       final env = o.TestEnv();

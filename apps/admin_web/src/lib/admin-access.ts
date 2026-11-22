@@ -3,7 +3,15 @@ import { env } from "@/lib/env";
 import { cache } from "react";
 import { getVerifiedSession } from "@/lib/session";
 
-export type AdminProfile = { id: string; full_name: string; email: string | null; role: "admin" };
+export type AdminProfile = {
+  id: string;
+  full_name: string;
+  email: string | null;
+  role: "admin";
+  /** Name of the permission role, or null when none is assigned yet (the admin can sign in but sees nothing). */
+  admin_role: string | null;
+  permissions: string[];
+};
 
 export type AdminAccess =
   | { kind: "ok"; admin: AdminProfile }
@@ -45,3 +53,9 @@ export const getAdminAccess = cache(async (): Promise<AdminAccess> => {
   if (res.status === 403) return { kind: "forbidden", code };
   return { kind: "error", message: "The ZURUV API returned an unexpected error." };
 });
+
+/** Convenience for pages: does the signed-in admin hold this permission? (The API still enforces it.) */
+export async function hasPermission(perm: string): Promise<boolean> {
+  const a = await getAdminAccess();
+  return a.kind === "ok" && a.admin.permissions.includes(perm);
+}

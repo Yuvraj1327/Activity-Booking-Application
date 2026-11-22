@@ -10,8 +10,8 @@ export function one(params: SearchParams, key: string): string | undefined {
 
 export const PAGE_SIZE = 20;
 
-export function pageOf(params: SearchParams): { offset: number; page: number } {
-  const raw = Number(one(params, "page") ?? "1");
+export function pageOf(params: SearchParams, key = "page"): { offset: number; page: number } {
+  const raw = Number(one(params, key) ?? "1");
   const page = Number.isInteger(raw) && raw >= 1 && raw <= 5000 ? raw : 1;
   return { offset: (page - 1) * PAGE_SIZE, page };
 }

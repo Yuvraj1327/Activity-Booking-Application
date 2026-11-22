@@ -43,6 +43,30 @@ class GatewayPayment:
     error_description: str | None
 
 
+@dataclass(frozen=True)
+class GatewayRefund:
+    id: str
+    payment_id: str
+    amount_paise: int
+    status: str  # pending | processed | failed
+    receipt: str | None
+
+
+class GatewayUncertainError(ServiceUnavailableError):
+    """The request may or may not have reached the provider (timeout, 5xx, dropped connection).
+    The caller must NOT assume failure and must NOT blindly retry: it reconciles instead."""
+
+
+def refund_from_entity(entity: dict[str, Any]) -> GatewayRefund:
+    return GatewayRefund(
+        id=str(entity["id"]),
+        payment_id=str(entity.get("payment_id", "")),
+        amount_paise=int(entity.get("amount", 0)),
+        status=str(entity.get("status", "pending")),
+        receipt=entity.get("receipt"),
+    )
+
+
 class PaymentGateway(Protocol):
     @property
     def configured(self) -> bool: ...
@@ -59,6 +83,14 @@ class PaymentGateway(Protocol):
     async def fetch_order_payments(self, order_id: str) -> list[GatewayPayment]: ...
 
     async def capture(self, payment_id: str, amount_paise: int, currency: str) -> GatewayPayment: ...
+
+    async def create_refund(
+        self, payment_id: str, amount_paise: int, *, receipt: str, idempotency_key: str, notes: dict[str, str]
+    ) -> GatewayRefund: ...
+
+    async def fetch_payment_refunds(self, payment_id: str) -> list[GatewayRefund]: ...
+
+    async def list_payments_between(self, start_ts: int, end_ts: int) -> list[GatewayPayment]: ...
 
     def verify_checkout_signature(self, order_id: str, payment_id: str, signature: str) -> bool: ...
 
@@ -122,7 +154,14 @@ class RazorpayGateway:
         return hmac.compare_digest(expected, signature.strip().lower())
 
     # -------------------------------------------------------------- HTTP
-    async def _request(self, method: str, path: str, json: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if not self.configured:
             raise ServiceUnavailableError(
                 "Payments are not configured on the server.", code="PAYMENTS_NOT_CONFIGURED"
@@ -132,10 +171,21 @@ class RazorpayGateway:
         client = self._client or httpx.AsyncClient(timeout=httpx.Timeout(15.0))
         try:
             resp = await client.request(
-                method, f"{self._base}{path}", json=json, auth=(self._key_id, self._secret)
+                method,
+                f"{self._base}{path}",
+                json=json,
+                params=params,
+                headers=headers,
+                auth=(self._key_id, self._secret),
             )
         except httpx.HTTPError as exc:
             logger.warning("razorpay_unreachable", extra={"path": path, "error": type(exc).__name__})
+            if not isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout)):
+                # The request may have been delivered: the outcome is unknown.
+                raise GatewayUncertainError(
+                    "The payment provider did not answer in time. The result is unknown.",
+                    code="PAYMENT_PROVIDER_TIMEOUT",
+                ) from exc
             raise ServiceUnavailableError(
                 "The payment provider could not be reached. Please try again.",
                 code="PAYMENT_PROVIDER_UNAVAILABLE",
@@ -146,13 +196,23 @@ class RazorpayGateway:
         if resp.status_code >= 400:
             # Log status and Razorpay's error code only; never the body of a payment object.
             code = None
-            with contextlib.suppress(ValueError):
-                code = resp.json().get("error", {}).get("code")
+            description = None
+            with contextlib.suppress(ValueError, AttributeError):
+                err = resp.json().get("error", {})
+                code = err.get("code")
+                description = str(err.get("description", ""))[:200] or None
             logger.warning(
                 "razorpay_error", extra={"path": path, "status": resp.status_code, "provider_code": code}
             )
+            if resp.status_code >= 500:
+                raise GatewayUncertainError(
+                    "The payment provider had an internal error. The result is unknown.",
+                    code="PAYMENT_PROVIDER_TIMEOUT",
+                )
             raise ServiceUnavailableError(
-                "The payment provider rejected the request.", code="PAYMENT_PROVIDER_ERROR"
+                "The payment provider rejected the request.",
+                code="PAYMENT_PROVIDER_ERROR",
+                details={"provider_code": code, "description": description},
             )
         data: dict[str, Any] = resp.json()
         return data
@@ -185,3 +245,31 @@ class RazorpayGateway:
             "POST", f"/payments/{payment_id}/capture", {"amount": amount_paise, "currency": currency}
         )
         return payment_from_entity(data)
+
+    async def create_refund(
+        self, payment_id: str, amount_paise: int, *, receipt: str, idempotency_key: str, notes: dict[str, str]
+    ) -> GatewayRefund:
+        data = await self._request(
+            "POST",
+            f"/payments/{payment_id}/refund",
+            {"amount": amount_paise, "speed": "normal", "receipt": receipt[:40], "notes": notes},
+            headers={"X-Refund-Idempotency": idempotency_key},
+        )
+        return refund_from_entity(data)
+
+    async def fetch_payment_refunds(self, payment_id: str) -> list[GatewayRefund]:
+        data = await self._request("GET", f"/payments/{payment_id}/refunds", params={"count": 100})
+        return [refund_from_entity(i) for i in data.get("items", [])]
+
+    async def list_payments_between(self, start_ts: int, end_ts: int) -> list[GatewayPayment]:
+        out: list[GatewayPayment] = []
+        skip = 0
+        while True:
+            data = await self._request(
+                "GET", "/payments", params={"from": start_ts, "to": end_ts, "count": 100, "skip": skip}
+            )
+            items = data.get("items", [])
+            out.extend(payment_from_entity(i) for i in items)
+            if len(items) < 100 or skip > 20_000:
+                return out
+            skip += 100

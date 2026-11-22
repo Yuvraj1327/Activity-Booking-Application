@@ -4,6 +4,10 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     admin,
+    admin_content,
+    admin_finance,
+    admin_moderation,
+    admin_system,
     auth,
     bookings,
     catalog,
@@ -11,6 +15,7 @@ from app.api.v1.endpoints import (
     meta,
     notifications,
     owner_business,
+    owner_kyc,
     owner_resources,
     owner_venues,
     owners,
@@ -31,6 +36,12 @@ api_router.include_router(owner_business.router)
 api_router.include_router(owner_venues.router)
 api_router.include_router(owner_resources.router)
 api_router.include_router(admin.router)
+api_router.include_router(admin_system.router)
+api_router.include_router(admin_finance.router)
+api_router.include_router(admin_moderation.router)
+api_router.include_router(admin_content.router)
+api_router.include_router(admin_content.public_router)
+api_router.include_router(owner_kyc.router)
 api_router.include_router(catalog.router)
 api_router.include_router(bookings.router)
 api_router.include_router(payments.router)

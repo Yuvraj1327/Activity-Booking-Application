@@ -256,6 +256,9 @@ class StatusChip extends StatelessWidget {
     final (label, fg, bg) = switch (status) {
       'published' => ('Published', ZuruvColors.success, const Color(0xFFE6F7EE)),
       'draft' => ('Draft', const Color(0xFFB26A00), const Color(0xFFFFF3E0)),
+      'pending_review' => ('In review', const Color(0xFFB26A00), const Color(0xFFFFF3E0)),
+      'rejected' => ('Rejected', ZuruvColors.error, const Color(0xFFFDE8EC)),
+      'suspended' => ('Suspended', ZuruvColors.error, const Color(0xFFFDE8EC)),
       'archived' => ('Archived', ZuruvColors.textSecondary, const Color(0xFFF0F0F4)),
       'confirmed' => ('Confirmed', ZuruvColors.success, const Color(0xFFE6F7EE)),
       'pending' || 'pending_payment' => ('Pending', const Color(0xFFB26A00), const Color(0xFFFFF3E0)),

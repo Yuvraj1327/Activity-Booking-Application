@@ -53,6 +53,7 @@ export async function adminRequest(path: string, init: RequestInit & { query?: Q
   if (res.status === 401) redirect("/login");
   if (res.status === 403 && code === "MFA_REQUIRED") redirect("/mfa");
   if (res.status === 403 && (code === "INSUFFICIENT_ROLE" || code === "ACCOUNT_SUSPENDED")) redirect("/unauthorized");
+  // PERMISSION_DENIED / ADMIN_ROLE_REQUIRED: the page shows a clear message instead of a redirect.
   throw new AdminApiError(res.status, code, body?.message ?? res.statusText);
 }
 
@@ -78,4 +79,19 @@ export async function safe<T>(p: Promise<T>): Promise<{ ok: true; data: T } | { 
     // redirect() throws a control-flow error that must propagate
     throw e;
   }
+}
+
+/** Same as adminSend, plus extra headers (e.g. Idempotency-Key) and DELETE. */
+export async function adminCall<T>(
+  method: "POST" | "PATCH" | "PUT" | "DELETE",
+  path: string,
+  body?: unknown,
+  headers: Record<string, string> = {},
+): Promise<T> {
+  const res = await adminRequest(path, {
+    method,
+    headers: { ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...headers },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return (res.status === 204 ? undefined : await res.json().catch(() => undefined)) as T;
 }

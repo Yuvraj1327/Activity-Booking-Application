@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:zuruv/core/constants/tokens.dart';
 import 'package:zuruv/core/settings/app_settings.dart';
+import 'package:zuruv/core/settings/settings_repository.dart';
 import 'package:zuruv/core/settings/settings_widgets.dart';
 
 final packageInfoProvider = FutureProvider<PackageInfo>((ref) => PackageInfo.fromPlatform());
@@ -42,7 +43,17 @@ class AboutScreen extends ConsumerWidget {
   }
 }
 
-/// The final legal text has not been supplied yet (open question in docs/OPEN_QUESTIONS.md), so
+/// A page published in the admin console, or null when there is none (or it cannot be loaded right now).
+final cmsPageProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, slug) async {
+  try {
+    return await ref.watch(settingsRepositoryProvider).contentPage(slug);
+  } catch (_) {
+    return null;
+  }
+});
+
+/// Shows the legal text published in the admin console (slugs `terms-customer`, `terms-owner`, `privacy`).
+/// Until it is published, the final legal text has not been supplied yet (open question in docs/OPEN_QUESTIONS.md), so
 /// these pages say so honestly instead of showing invented terms.
 class LegalScreen extends ConsumerWidget {
   const LegalScreen({super.key, required this.privacy});
@@ -51,8 +62,12 @@ class LegalScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isOwner = ref.watch(isOwnerProvider);
-    final title = privacy ? 'Privacy Policy' : 'Terms & Conditions';
-    final body = privacy
+    final slug = privacy ? 'privacy' : (isOwner ? 'terms-owner' : 'terms-customer');
+    final managed = ref.watch(cmsPageProvider(slug)).valueOrNull;
+    final title = managed != null ? managed['title'] as String : (privacy ? 'Privacy Policy' : 'Terms & Conditions');
+    final body = managed != null
+        ? managed['body'] as String
+        : privacy
         ? 'The ZURUV privacy policy is pending legal review and will be published here before launch.'
         : 'The ZURUV terms and conditions for ${isOwner ? 'venue owners' : 'players'} are pending legal review and will be published here before launch.';
     return SettingsPage(

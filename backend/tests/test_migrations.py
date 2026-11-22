@@ -48,7 +48,7 @@ def test_orm_models_match_migrated_schema(fresh_db):
 
 def test_downgrade_to_base_and_upgrade_again(fresh_db):
     cfg = alembic_config(fresh_db)
-    assert len(public_tables(fresh_db)) == 27
+    assert len(public_tables(fresh_db)) == 46
     command.downgrade(cfg, "base")
     assert public_tables(fresh_db) == set()
     assert sql(fresh_db, "SELECT count(*) AS n FROM storage.buckets")[0]["n"] == 0
@@ -59,8 +59,8 @@ def test_downgrade_to_base_and_upgrade_again(fresh_db):
         == 0
     )
     command.upgrade(cfg, "head")
-    assert len(public_tables(fresh_db)) == 27
-    assert sql(fresh_db, "SELECT count(*) AS n FROM storage.buckets")[0]["n"] == 2
+    assert len(public_tables(fresh_db)) == 46
+    assert sql(fresh_db, "SELECT count(*) AS n FROM storage.buckets")[0]["n"] == 3
 
 
 def test_upgrade_is_refused_without_supabase_auth_schema():

@@ -22,6 +22,7 @@ from app.models import (
     VenueAmenity,
     VenueCategory,
     VenueImage,
+    VenueModerationEvent,
     VenueResource,
 )
 from app.schemas.catalog import AmenityOut, CategoryOut
@@ -42,6 +43,7 @@ from app.schemas.owner import (
     ScheduleReplace,
     SpecialDate,
 )
+from app.services import platform_settings
 from app.services.schedule_guard import ensure_no_conflicts, has_bookings
 from app.services.storage import StorageGateway
 from app.services.venues import public_image_url
@@ -165,6 +167,8 @@ class OwnerVenueService:
             id=v.id,
             name=v.name,
             status=v.status,
+            status_reason=v.status_reason if v.status in ("rejected", "suspended") else None,
+            is_verified=v.is_verified,
             city_name=city_name,
             address_line=v.address_line,
             cover_image_url=public_image_url(self.settings, cover.storage_path) if cover else None,
@@ -350,27 +354,62 @@ class OwnerVenueService:
         await self.s.refresh(venue)
         return await self.detail(venue)
 
+    def _moderation(
+        self, venue: Venue, action: str, owner_id: UUID, from_status: str, reason: str | None = None
+    ) -> None:
+        self.s.add(
+            VenueModerationEvent(
+                venue_id=venue.id, action=action, from_status=from_status, to_status=venue.status,
+                reason=reason, actor_id=owner_id, actor_role="owner",
+            )
+        )  # fmt: skip
+
     async def publish(self, venue_id: UUID, owner_id: UUID) -> OwnerVenueDetail:
-        venue = await self._owned(venue_id, owner_id)
+        """Goes live directly, or is submitted for admin approval once that workflow is switched on (Q4).
+        A suspended venue can never be re-published by its owner."""
+        venue = await self._owned(venue_id, owner_id, lock=True)
+        if venue.status == "suspended":
+            raise ConflictError(
+                "This venue was suspended by ZURUV. Contact support to have it reinstated.",
+                code="VENUE_SUSPENDED",
+            )
+        if venue.status in ("published", "pending_review"):
+            return await self.detail(venue)
         blockers = self._blockers(venue, await self._category_count(venue.id))
         if blockers:
             raise ValidationFailedError(
                 "This venue is not ready to publish.", code="PUBLISH_REQUIREMENTS", details=blockers
             )
-        if venue.status != "published":
+        old = venue.status
+        now = datetime.now(UTC)
+        if await platform_settings.get(self.s, "venue_approval_required"):
+            venue.status = "pending_review"
+            venue.submitted_at = now
+            venue.status_reason = None
+            self._moderation(venue, "submitted", owner_id, old)
+            await self._audit(owner_id, "venue.submitted", venue.id)
+        else:
             venue.status = "published"
-            venue.published_at = datetime.now(UTC)
+            venue.published_at = now
+            venue.status_reason = None
             await self._audit(owner_id, "venue.published", venue.id)
-            await self.s.commit()
-            await self.s.refresh(venue)
+        await self.s.commit()
+        await self.s.refresh(venue)
         return await self.detail(venue)
 
     async def unpublish(self, venue_id: UUID, owner_id: UUID) -> OwnerVenueDetail:
-        venue = await self._owned(venue_id, owner_id)
-        if venue.status == "published":
+        venue = await self._owned(venue_id, owner_id, lock=True)
+        if venue.status == "suspended":
+            raise ConflictError("This venue was suspended by ZURUV.", code="VENUE_SUSPENDED")
+        if venue.status in ("published", "pending_review"):
+            old = venue.status
             venue.status = "draft"
             venue.published_at = None
-            await self._audit(owner_id, "venue.unpublished", venue.id)
+            if old == "pending_review":
+                self._moderation(venue, "withdrawn", owner_id, old)
+            await self._audit(
+                owner_id, "venue.unpublished" if old == "published" else "venue.withdrawn", venue.id
+            )
             await self.s.commit()
             await self.s.refresh(venue)
         return await self.detail(venue)

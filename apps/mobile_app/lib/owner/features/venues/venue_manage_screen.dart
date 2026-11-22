@@ -46,12 +46,14 @@ class _VenueManageScreenState extends ConsumerState<VenueManageScreen> {
 
   Future<void> _togglePublish(OwnerVenueDetail v) => _run(() async {
         final repo = ref.read(ownerRepositoryProvider);
-        if (v.card.isPublished) {
+        if (v.card.isPublished || v.card.isPendingReview) {
           await repo.unpublish(v.id);
           _toast('Venue taken offline. It is now a draft.');
         } else {
-          await repo.publish(v.id);
-          _toast('Venue published. Customers can now find it.');
+          final after = await repo.publish(v.id);
+          _toast(after.card.isPendingReview
+              ? 'Venue submitted. It goes live once ZURUV approves it.'
+              : 'Venue published. Customers can now find it.');
         }
         ref.invalidate(venueDetailProvider(widget.venueId));
         invalidateVenueData(ref);
@@ -146,11 +148,16 @@ class _VenueManageScreenState extends ConsumerState<VenueManageScreen> {
                 label: const Text('Manage slots & hours'),
               ),
               const SizedBox(height: Gap.md),
-              LoadingButton(
-                label: v.card.isPublished ? 'Take offline' : 'Publish venue',
-                loading: _busy,
-                onPressed: (!v.card.isPublished && !v.canPublish) ? null : () => _togglePublish(v),
-              ),
+              if (v.card.isSuspended)
+                const Text('This venue was suspended by ZURUV. Contact support to have it reinstated.', style: TextStyle(fontWeight: FontWeight.w600))
+              else ...[
+                if (v.card.isPendingReview) const Padding(padding: EdgeInsets.only(bottom: 8), child: Text('Waiting for ZURUV approval. It is not visible to customers yet.')),
+                LoadingButton(
+                  label: v.card.isPublished ? 'Take offline' : (v.card.isPendingReview ? 'Withdraw submission' : 'Publish venue'),
+                  loading: _busy,
+                  onPressed: (!v.card.isPublished && !v.card.isPendingReview && !v.canPublish) ? null : () => _togglePublish(v),
+                ),
+              ],
               const SizedBox(height: Gap.lg),
               TextButton.icon(
                 onPressed: _busy ? null : () => _delete(v),

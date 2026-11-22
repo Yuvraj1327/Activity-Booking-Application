@@ -1,4 +1,11 @@
-# Admin permission matrix (Step 8)
+# Admin permission matrix
+
+> **Superseded in part by [ADMIN_OPERATIONS.md](ADMIN_OPERATIONS.md).** Administration is now permission based:
+> an admin needs a role (`admin_roles` / `admin_profiles`) and every route checks a named permission. The table
+> below describes the original single-tier behaviour, which `super_admin` (the migrated role of every existing
+> admin) still has. New write actions (refunds, cancellation, venue moderation, payouts, ...) each have their own permission.
+
+# Admin permission matrix (Step 8, original)
 
 Only the backend decides. "Admin" means a `profiles.role = 'admin'`, active, MFA-verified when `ADMIN_REQUIRE_MFA` is on.
 

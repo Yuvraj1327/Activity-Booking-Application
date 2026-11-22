@@ -61,3 +61,9 @@ class OwnerProfile(TimestampMixin, Base):
     business_phone: Mapped[str | None] = mapped_column(Text)
     business_email: Mapped[str | None] = mapped_column(Text)
     business_address: Mapped[str | None] = mapped_column(Text)
+    kyc_status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'not_submitted'"))
+    kyc_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    kyc_reviewed_by: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="SET NULL")
+    )
+    kyc_note: Mapped[str | None] = mapped_column(Text)

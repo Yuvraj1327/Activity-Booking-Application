@@ -49,16 +49,19 @@ test.describe("bookings", () => {
     for (const r of await rows(page).all()) await expect(r).toContainText("Smash Arena");
   });
 
-  test("detail shows full booking, related payment records and status history; no status controls", async ({ page, request }) => {
+  test("detail shows customer, owner, venue, amounts, payment records and the full timeline", async ({ page, request }) => {
     const t = await adminToken(request);
     const paid = (await api<B>(request, "/admin/bookings?status=confirmed&limit=1", t)).items[0];
     await page.goto(`/bookings/${paid.id}`);
     await expect(page.getByRole("heading", { name: paid.booking_code })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Payment records" })).toBeVisible();
-    await expect(page.getByText("Captured").first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Status history" })).toBeVisible();
-    await expect(page.getByText("Pending Payment → Confirmed")).toBeVisible();
-    await expect(page.getByRole("button", { name: /cancel|confirm|refund/i })).toHaveCount(0);
+    await expect(page.getByTestId("amount-breakdown")).toContainText("Total charged");
+    await expect(page.getByRole("heading", { name: "Customer", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Owner", exact: true })).toBeVisible();
+    await expect(page.getByTestId("timeline")).toContainText("Pending payment → Confirmed");
+    // the only status action an admin has is an exceptional cancellation, and it needs a reason
+    await expect(page.getByRole("button", { name: "Cancel booking" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^(confirm|complete|mark)/i })).toHaveCount(0);
     const pending = (await api<B>(request, "/admin/bookings?status=pending_payment&limit=1", t)).items[0];
     await page.goto(`/bookings/${pending.id}`);
     await expect(page.getByText("No payment started")).toBeVisible();
@@ -77,15 +80,15 @@ test.describe("bookings", () => {
 });
 
 test.describe("payments", () => {
-  test("monitoring page distinguishes successful, failed and pending, with refund records marked unavailable", async ({ page, request }) => {
+  test("payments page distinguishes successful, failed and pending, and summarises refunds", async ({ page, request }) => {
     const s = await api<{ captured_count: number; failed_count: number; open_count: number; gross_captured_paise: number }>(request, "/admin/payments/summary", await adminToken(request));
     await page.goto("/payments");
     const stat = (l: string) => page.getByTestId("stat-card").filter({ has: page.getByText(l, { exact: true }) }).getByTestId("stat-value");
     await expect(stat("Failed")).toHaveText(String(s.failed_count));
     await expect(stat("Pending / open")).toHaveText(String(s.open_count));
     await expect(stat("Successful payments")).toContainText("₹");
-    await expect(page.getByTestId("unavailable-note")).toContainText("Refund records");
-    for (const h of ["Payment", "Booking", "Venue", "Amount", "Method", "Status", "Gateway reference", "Date"]) {
+    await expect(page.getByTestId("refund-summary")).toContainText("Refunds:");
+    for (const h of ["Payment", "Booking", "Venue", "Amount", "Method", "Status", "Refunded", "Gateway reference", "Date"]) {
       await expect(page.getByRole("columnheader", { name: h })).toBeVisible();
     }
     await expect(rows(page)).toHaveCount(s.captured_count + s.failed_count + s.open_count > 20 ? 20 : s.captured_count + s.failed_count + s.open_count);
@@ -127,7 +130,7 @@ test.describe("CSV export", () => {
     const [dl] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-bookings").click()]);
     expect(dl.suggestedFilename()).toBe("zuruv-bookings.csv");
     const csv = (await (await import("node:fs")).promises.readFile((await dl.path())!, "utf8")).split("\r\n").filter(Boolean);
-    expect(csv[0]).toBe("booking_code,booking_id,customer_id,customer_name,venue,owner_name,booking_date,start_local,end_local,duration_minutes,total_amount_paise,currency,payment_status,booking_status,created_at_utc");
+    expect(csv[0]).toBe("booking_code,booking_id,customer_id,customer_name,venue,owner_name,booking_date,start_local,end_local,duration_minutes,total_amount_paise,currency,payment_status,booking_status,created_at_utc,city,sports,refund_status,refunded_paise");
     expect(csv.length - 1).toBe(30);
     expect(csv.slice(1).every((l) => l.endsWith("") && l.includes(",confirmed,"))).toBeTruthy();
     expect(csv.join("\n")).not.toMatch(/@example\.com|\+91\d{8}/);

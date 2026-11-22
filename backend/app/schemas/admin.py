@@ -5,7 +5,7 @@ refund totals) is an `Unavailable` object, never a made-up number.
 """
 
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, StringConstraints
@@ -16,6 +16,14 @@ from app.schemas.payment import AdminPaymentOut
 from app.schemas.profile import StrictModel
 
 Granularity = Literal["day", "week", "month"]
+
+
+class MoneyFigure(BaseModel):
+    """A figure that IS backed by recorded data (ledger rows under an approved finance configuration)."""
+
+    available: Literal[True] = True
+    amount_paise: int
+    note: str
 
 
 class Page(BaseModel):
@@ -94,6 +102,13 @@ class OwnerDetail(BaseModel):
     confirmed_count: int
     gross_paid_paise: int
     recent_bookings: list[BookingBrief]
+    kyc_status: str = "not_submitted"
+    kyc_reviewed_at: datetime | None = None
+    kyc_note: str | None = None
+    pending_kyc_documents: int = 0
+    verified_venues: int = 0
+    payouts_paid_paise: int = 0
+    refunds_paise: int = 0
 
 
 class CustomerRow(BaseModel):
@@ -123,6 +138,11 @@ class CustomerDetail(BaseModel):
     cancelled_count: int
     gross_paid_paise: int
     bookings: list[BookingBrief]
+    completed_count: int = 0
+    refunded_paise: int = 0
+    deletion_requested_at: datetime | None = None
+    language: str | None = None
+    has_open_dispute: bool = False
 
 
 # ------------------------------------------------------------------ venues
@@ -140,6 +160,11 @@ class VenueRow(BaseModel):
     published_at: datetime | None
     bookings_count: int
     confirmed_count: int
+    is_verified: bool = False
+    submitted_at: datetime | None = None
+    status_reason: str | None = None
+    owner_kyc_status: str | None = None
+    open_reports: int = 0
 
 
 class VenuePage(Page):
@@ -155,6 +180,12 @@ class VenueDetail(VenueRow):
     gross_paid_paise: int
     rating_avg: float | None
     rating_count: int
+    verified_at: datetime | None = None
+    completed_count: int = 0
+    cancelled_count: int = 0
+    future_confirmed_count: int = 0
+    performance: list[dict[str, Any]] = []  # last months: bookings, completed, cancelled, gross paid
+    owner_earnings: MoneyFigure | Unavailable | None = None
 
 
 # ------------------------------------------------------------------ bookings / payments (extended)
@@ -162,6 +193,10 @@ class AdminBookingRow(AdminBookingOut):
     owner_name: str
     payment_amount_paise: int | None = None
     payment_id: UUID | None = None
+    city: str | None = None
+    sports: list[str] = []
+    refund_status: str = "none"  # none | awaiting | pending | processed | failed
+    refunded_paise: int = 0
 
 
 class AdminBookingRowPage(Page):
@@ -170,6 +205,14 @@ class AdminBookingRowPage(Page):
 
 class AdminBookingDetailOut(AdminBookingRow):
     payments: list[AdminPaymentOut]
+    customer: dict[str, Any] | None = None
+    owner: dict[str, Any] | None = None
+    venue: dict[str, Any] | None = None
+    price_snapshot: dict[str, Any] | None = None
+    refunds: list[dict[str, Any]] = []
+    disputes: list[dict[str, Any]] = []
+    coupon: dict[str, Any] | None = None
+    timeline: list[dict[str, Any]] = []
 
 
 # ------------------------------------------------------------------ analytics
@@ -185,18 +228,21 @@ class MoneyBreakdown(BaseModel):
     currency: str = "INR"
     gross_booking_value_paise: int  # sum of booking totals for bookings that are confirmed/completed
     successful_payment_paise: int  # captured gateway payments (gross)
-    platform_revenue: Unavailable
-    owner_earnings: Unavailable
-    refunds: Unavailable
+    platform_revenue: MoneyFigure | Unavailable  # fee + commission, from the ledger (Q7, Q8)
+    owner_earnings: MoneyFigure | Unavailable  # owner share, from the ledger (Q8)
+    refunds: MoneyFigure | Unavailable  # refunds the gateway has processed in the period
+    tax_collected: MoneyFigure | Unavailable | None = None  # GST/tax portion, from the ledger (Q7)
+    ledger_coverage: dict[str, Any] | None = None  # captured payments with / without a ledger entry
 
 
 class BookingBucket(BaseModel):
     bucket: date
     total: int
-    confirmed: int
+    confirmed: int  # confirmed (upcoming) only
     pending: int
     cancelled: int
     other: int
+    completed: int = 0  # finished bookings, counted separately from confirmed
 
 
 class StatusShare(BaseModel):
@@ -241,7 +287,37 @@ class RegistrationBucket(BaseModel):
 
 class CategoryShare(BaseModel):
     category: str
+    bookings: float  # each booking is split equally across its venue's sports, so shares add up to the total
+    tagged_bookings: int  # bookings at venues tagged with this sport (a multi-sport venue appears in several)
+    venues: int
+    gross_paid_paise: int = 0
+
+
+class CityShare(BaseModel):
+    city_id: UUID | None
+    city: str
+    venues: int
     bookings: int
+    confirmed: int
+    completed: int
+    cancelled: int
+    gross_paid_paise: int
+
+
+class VenuePerformance(BaseModel):
+    venue_id: UUID
+    name: str
+    city: str | None
+    status: str
+    bookings: int
+    confirmed: int
+    completed: int
+    cancelled: int
+    cancellation_rate_percent: float | None
+    gross_paid_paise: int
+    average_booking_paise: int | None
+    rating_avg: float | None
+    rating_count: int
 
 
 class TopVenue(BaseModel):
@@ -249,6 +325,7 @@ class TopVenue(BaseModel):
     name: str
     bookings: int
     confirmed: int
+    completed: int = 0
 
 
 class PlatformAnalytics(BaseModel):
@@ -259,12 +336,20 @@ class PlatformAnalytics(BaseModel):
     new_venues: int
     series: list[RegistrationBucket]
     popular_categories: list[CategoryShare]
+    uncategorised_bookings: int = 0
+    cities: list[CityShare] = []
     top_venues: list[TopVenue]
 
 
 class DashboardTotals(BaseModel):
-    customers: int
-    owners: int
+    customers: int  # all customer accounts
+    owners: int  # all owner accounts
+    active_customers: int = 0  # status = active
+    active_owners: int = 0
+    suspended_customers: int = 0
+    suspended_owners: int = 0
+    pending_venue_approvals: int = 0  # venues waiting in pending_review
+    open_venue_reports: int = 0
     venues: int
     published_venues: int
     bookings: int
@@ -273,10 +358,12 @@ class DashboardTotals(BaseModel):
 
 class DashboardPeriod(BaseModel):
     bookings: int
-    confirmed: int
+    confirmed: int  # confirmed only
+    completed: int = 0  # completed only
     pending: int
     cancelled: int
     transactions: int
+    failed_payments: int = 0
     money: MoneyBreakdown
     new_customers: int
     new_owners: int
@@ -319,9 +406,11 @@ class AuditRow(BaseModel):
     action: str
     actor_id: UUID | None
     actor_role: str | None
+    actor_name: str | None = None
     entity_type: str | None
     entity_id: str | None
     metadata: dict[str, object]
+    request_id: str | None = None
     created_at: datetime
 
 

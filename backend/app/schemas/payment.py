@@ -1,7 +1,7 @@
 """Request/response models for payments, notifications and devices (Step 7)."""
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, StringConstraints
@@ -145,6 +145,8 @@ class AdminPaymentOut(BaseModel):
     created_at: datetime
     captured_at: datetime | None
     failed_at: datetime | None
+    refunded_paise: int = 0  # refunds the gateway has processed
+    refund_in_flight_paise: int = 0  # requested / pending / uncertain: not final yet
 
 
 class PaymentEventOut(BaseModel):
@@ -159,6 +161,8 @@ class PaymentEventOut(BaseModel):
 
 class AdminPaymentDetail(AdminPaymentOut):
     events: list[PaymentEventOut]
+    refunds: list[dict[str, Any]] = []
+    refund_availability: dict[str, Any] | None = None
 
 
 class AdminPaymentPage(BaseModel):
@@ -176,7 +180,7 @@ class AdminPaymentSummary(BaseModel):
     open_count: int
     review_required_count: int
     rejected_events_count: int
-    refunds: Unavailable
+    refunds: dict[str, Any]  # real totals from the refunds table (policy decides whether NEW ones may start)
 
 
 # ------------------------------------------------------------------ devices / notifications

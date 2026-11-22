@@ -86,7 +86,9 @@ class OwnerVenueImageOut(BaseModel):
 class OwnerVenueCard(BaseModel):
     id: UUID
     name: str
-    status: Literal["draft", "published", "archived"]
+    status: Literal["draft", "pending_review", "published", "rejected", "suspended", "archived"]
+    status_reason: str | None = None  # why it was rejected / suspended (shown to the owner)
+    is_verified: bool = False
     city_name: str | None
     address_line: str | None
     cover_image_url: str | None

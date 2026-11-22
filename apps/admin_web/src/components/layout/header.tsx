@@ -5,11 +5,11 @@ import { HeaderSearch } from "@/components/layout/header-search";
 import { MobileMenu } from "@/components/layout/mobile-menu";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 
-export function Header({ adminName, unread }: { adminName: string; unread: number }) {
+export function Header({ adminName, unread, permissions, roleName }: { adminName: string; unread: number; permissions: string[]; roleName: string | null }) {
   const initials = adminName.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   return (
     <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-3 sm:gap-4 sm:px-4 backdrop-blur md:px-6">
-      <MobileMenu adminName={adminName} />
+      <MobileMenu adminName={adminName} permissions={permissions} />
       <Link href="/dashboard" aria-label="ZURUV Admin home" className="flex shrink-0 items-center md:hidden">
         <Image src="/logo.png" alt="ZURUV" width={800} height={168} priority className="h-8 w-auto dark:hidden" />
         <Image src="/logo-dark.png" alt="ZURUV" width={800} height={168} priority className="hidden h-8 w-auto dark:block" />
@@ -31,7 +31,7 @@ export function Header({ adminName, unread }: { adminName: string; unread: numbe
           <span aria-hidden className="flex size-9 items-center justify-center rounded-full bg-primary-tint text-xs font-semibold text-primary">{initials || "A"}</span>
           <div className="hidden leading-tight sm:block">
             <p className="text-sm font-medium" data-testid="admin-name">{adminName}</p>
-            <p className="text-xs text-muted-foreground">Administrator</p>
+            <p className="text-xs text-muted-foreground" data-testid="admin-role">{roleName ?? "No role assigned"}</p>
           </div>
           <ChevronDown className="hidden size-4 text-muted-foreground sm:block" aria-hidden />
         </Link>

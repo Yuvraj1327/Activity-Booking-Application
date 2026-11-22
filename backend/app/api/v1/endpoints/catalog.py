@@ -5,6 +5,7 @@ from fastapi import APIRouter, Query, Request, Response, status
 
 from app.api.deps import AnyUser, CustomerUser, DbSession
 from app.repositories.venues import VenueFilters, VenueRepository
+from app.schemas.admin_ops import VenueReportCreate
 from app.schemas.catalog import (
     AmenityOut,
     CategoryOut,
@@ -16,6 +17,7 @@ from app.schemas.catalog import (
     VenuePage,
     VenueSort,
 )
+from app.services.venue_moderation import VenueModeration
 from app.services.venues import VenueService
 
 router = APIRouter(tags=["catalog"])
@@ -102,3 +104,15 @@ async def remove_favorite(
 ) -> Response:
     await _service(request, session).remove_favorite(user.id, venue_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/venues/{venue_id}/report", status_code=status.HTTP_201_CREATED, summary="Report a venue to ZURUV"
+)
+async def report_venue(
+    venue_id: UUID, body: VenueReportCreate, request: Request, user: CustomerUser, session: DbSession
+) -> dict:
+    """Customers flag a listing (wrong information, unsafe, fraud...). Admins review it in the admin panel."""
+    return await VenueModeration(session, request.app.state.settings).create_report(
+        user.id, venue_id, body.reason, body.details
+    )

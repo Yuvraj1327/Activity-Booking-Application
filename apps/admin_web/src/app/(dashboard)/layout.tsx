@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
+import { NoRole } from "@/components/data/no-role";
 import { adminGet, safe } from "@/lib/admin-api";
 import { getAdminAccess } from "@/lib/admin-access";
 
@@ -30,10 +31,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      <Sidebar permissions={access.admin.permissions} />
       <div className="flex min-w-0 flex-1 flex-col overflow-x-clip bg-muted/40">
-        <Header adminName={access.admin.full_name} unread={unread.ok ? unread.data.unread_count : 0} />
-        <main className="min-w-0 flex-1 p-3 sm:p-4 md:p-6">{children}</main>
+        <Header adminName={access.admin.full_name} unread={unread.ok ? unread.data.unread_count : 0} permissions={access.admin.permissions} roleName={access.admin.admin_role} />
+        <main className="min-w-0 flex-1 p-3 sm:p-4 md:p-6">
+          {access.admin.admin_role ? children : <NoRole name={access.admin.full_name} />}
+        </main>
       </div>
     </div>
   );
