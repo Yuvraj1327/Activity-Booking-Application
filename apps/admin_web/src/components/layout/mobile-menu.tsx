@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { settingsItem, visibleGroups } from "@/lib/nav";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,14 @@ import { cn } from "@/lib/utils";
 export function MobileMenu({ adminName, permissions }: { adminName: string; permissions: string[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  // The header has backdrop-filter, which traps `position: fixed` children inside its 64px box.
+  // The drawer is therefore rendered into <body> so it covers the whole screen.
 
   useEffect(() => {
     if (!open) return;
@@ -45,14 +54,16 @@ export function MobileMenu({ adminName, permissions }: { adminName: string; perm
         <Menu className="size-5" aria-hidden />
       </button>
 
-      <div className={cn("fixed inset-0 z-40 transition-opacity", open ? "opacity-100" : "pointer-events-none opacity-0")} aria-hidden={!open}>
+      {mounted &&
+        createPortal(
+      <div className={cn("fixed inset-0 z-50 transition-opacity", open ? "opacity-100" : "pointer-events-none invisible opacity-0")} aria-hidden={!open}>
         <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
         <aside
           role="dialog"
           aria-modal="true"
           aria-label="Menu"
           className={cn(
-            "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-card shadow-xl transition-transform duration-200",
+            "absolute inset-y-0 left-0 flex h-dvh w-72 max-w-[85vw] flex-col bg-card shadow-xl transition-transform duration-200",
             open ? "translate-x-0" : "-translate-x-full",
           )}
         >
@@ -90,7 +101,9 @@ export function MobileMenu({ adminName, permissions }: { adminName: string; perm
             <SignOutButton variant="outline" />
           </div>
         </aside>
-      </div>
+      </div>,
+          document.body,
+        )}
     </div>
   );
 }

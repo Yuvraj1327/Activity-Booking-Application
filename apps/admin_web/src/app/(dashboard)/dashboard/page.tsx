@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, Wallet, BadgeCheck, CalendarCheck, CalendarClock, CalendarX2, CreditCard, MapPin, ShieldCheck, Store, Users } from "lucide-react";
 import { BriefBookings } from "@/components/data/booking-table";
@@ -10,6 +11,7 @@ import { EmptyState, ErrorState } from "@/components/data/states";
 import { TrendChart } from "@/components/charts/charts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { adminGet, safe } from "@/lib/admin-api";
 import { formatBucket, formatDateTime, formatMoney, formatNumber, titleCase } from "@/lib/format";
 import { resolveRange, type SearchParams } from "@/lib/query";
@@ -20,14 +22,31 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const range = resolveRange(params);
-  const res = await safe(adminGet<Dashboard>("/admin/dashboard", { from: range.from, to: range.to }));
 
   return (
     <div className="mx-auto max-w-7xl">
       <h2 className="sr-only">Dashboard</h2>
       <div className="mb-6"><DashboardHero /></div>
       <div className="mb-6"><DateRangeFilter path="/dashboard" params={params} range={range} /></div>
-      {!res.ok ? <ErrorState message={`Could not load the dashboard (${res.error.message}).`} /> : <Body d={res.data} />}
+      {/* The hero and filter paint at once; the data streams in behind a skeleton of the same shape. */}
+      <Suspense key={`${range.from}|${range.to}`} fallback={<DashboardSkeleton />}>
+        <DashboardData from={range.from} to={range.to} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function DashboardData({ from, to }: { from: string; to: string }) {
+  const res = await safe(adminGet<Dashboard>("/admin/dashboard", { from, to }));
+  return !res.ok ? <ErrorState message={`Could not load the dashboard (${res.error.message}).`} /> : <Body d={res.data} />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6" role="status" aria-label="Loading dashboard">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-28" />)}</div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-28" />)}</div>
+      <div className="grid gap-4 lg:grid-cols-2"><Skeleton className="h-80" /><Skeleton className="h-80" /></div>
     </div>
   );
 }

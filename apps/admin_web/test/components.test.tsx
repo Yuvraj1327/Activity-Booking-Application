@@ -7,7 +7,7 @@ import { StatCard } from "@/components/data/stat-card";
 import { StatusBadge } from "@/components/data/status-badge";
 import { MoneyPanel } from "@/components/data/money-panel";
 import { DateRangeFilter } from "@/components/data/date-range-filter";
-import { DonutChart, TrendChart } from "@/components/charts/charts";
+import { DonutChart, TrendChart } from "@/components/charts/charts-impl";
 import Loading from "@/app/(dashboard)/loading";
 import type { Money } from "@/lib/types";
 

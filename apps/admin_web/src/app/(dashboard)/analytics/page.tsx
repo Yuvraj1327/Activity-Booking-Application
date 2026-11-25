@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DateRangeFilter } from "@/components/data/date-range-filter";
 import { MoneyPanel } from "@/components/data/money-panel";
 import { PageHeader } from "@/components/data/page-header";
@@ -55,12 +57,23 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
       <DateRangeFilter path="/analytics" params={params} range={range} />
-      {tab === "bookings" && <Bookings query={query} g={g} />}
-      {tab === "revenue" && <Revenue query={query} g={g} />}
-      {tab === "platform" && <Platform query={query} g={g} />}
-      {tab === "sports" && <Sports query={query} />}
-      {tab === "cities" && <Cities query={query} />}
-      {tab === "venues" && <VenuesTab query={query} params={params} />}
+      <Suspense key={`${tab}|${g}|${range.from}|${range.to}|${one(params, "page") ?? ""}`} fallback={<TabSkeleton />}>
+        {tab === "bookings" && <Bookings query={query} g={g} />}
+        {tab === "revenue" && <Revenue query={query} g={g} />}
+        {tab === "platform" && <Platform query={query} g={g} />}
+        {tab === "sports" && <Sports query={query} />}
+        {tab === "cities" && <Cities query={query} />}
+        {tab === "venues" && <VenuesTab query={query} params={params} />}
+      </Suspense>
+    </div>
+  );
+}
+
+function TabSkeleton() {
+  return (
+    <div className="space-y-6" role="status" aria-label="Loading report">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-28" />)}</div>
+      <Skeleton className="h-80" />
     </div>
   );
 }

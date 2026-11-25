@@ -18,12 +18,31 @@ Dio createApiClient({String? baseUrl, String? Function()? accessToken}) {
 
   dio.interceptors.add(
     InterceptorsWrapper(
-      onRequest: (options, handler) {
+      onRequest: (options, handler) async {
+        // Only the real Supabase session can be refreshed; an injected token provider is used as is.
+        if (accessToken == null) await _refreshIfExpiring();
         final token = (accessToken ?? _supabaseToken)();
         if (token != null) options.headers['Authorization'] = 'Bearer $token';
         handler.next(options);
       },
-      onError: (e, handler) {
+      onError: (e, handler) async {
+        // A 401 usually means the access token expired while the app was in the background
+        // (the SDK's refresh timer does not run then). Refresh once and retry before giving up,
+        // otherwise the user would be signed out for no reason.
+        final req = e.requestOptions;
+        if (accessToken == null && e.response?.statusCode == 401 && req.extra['_retried'] != true) {
+          final fresh = await _forceRefresh();
+          if (fresh != null) {
+            try {
+              req.extra['_retried'] = true;
+              req.headers['Authorization'] = 'Bearer $fresh';
+              final res = await dio.fetch<dynamic>(req);
+              return handler.resolve(res);
+            } on DioException catch (retryError) {
+              return handler.next(retryError.copyWith(error: _toApiException(retryError)));
+            }
+          }
+        }
         handler.next(e.copyWith(error: _toApiException(e)));
       },
     ),
@@ -36,6 +55,32 @@ String? _supabaseToken() {
     return Supabase.instance.client.auth.currentSession?.accessToken;
   } catch (_) {
     return null; // Supabase not initialised (not configured).
+  }
+}
+
+/// Refreshes the session when the access token is expired or about to expire.
+Future<void> _refreshIfExpiring() async {
+  try {
+    final auth = Supabase.instance.client.auth;
+    final session = auth.currentSession;
+    if (session == null) return;
+    final exp = session.expiresAt; // seconds since epoch
+    if (exp == null) return;
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    if (exp - now > 60) return;
+    await auth.refreshSession();
+  } catch (_) {
+    // Offline or refresh failed: send the request anyway; a 401 is handled by the retry below.
+  }
+}
+
+/// Forces a refresh and returns the new access token, or null when it was not possible.
+Future<String?> _forceRefresh() async {
+  try {
+    final res = await Supabase.instance.client.auth.refreshSession();
+    return res.session?.accessToken;
+  } catch (_) {
+    return null;
   }
 }
 
