@@ -323,7 +323,7 @@ class _MapPreview extends ConsumerWidget {
   const _MapPreview({required this.query});
   final VenueQuery query;
 
-  static const _fallbackCenter = LatLng(23.2599, 77.4126); // Bhopal
+  static const _fallbackCenter = LatLng(12.9716, 77.5946); // Bangalore
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

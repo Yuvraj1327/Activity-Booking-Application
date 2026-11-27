@@ -8,12 +8,26 @@ plugins {
 }
 
 // Release signing: android/key.properties (git-ignored) points at your upload keystore.
-// Without it the release build falls back to the debug key, so it still installs for testing.
+// Release builds FAIL without it (no debug-key fallback), so a debug-signed bundle can't be produced.
 val keystoreProps = Properties().apply {
     val f = rootProject.file("key.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
-val hasReleaseKey = keystoreProps.getProperty("storeFile") != null
+val hasReleaseKey = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+    .all { !keystoreProps.getProperty(it).isNullOrBlank() }
+
+gradle.taskGraph.whenReady {
+    val buildingRelease = allTasks.any {
+        it.name.contains("Release", ignoreCase = true) &&
+            (it.name.startsWith("assemble") || it.name.startsWith("bundle") || it.name.startsWith("package"))
+    }
+    if (buildingRelease && !hasReleaseKey) {
+        throw GradleException(
+            "Release signing is not configured. Create android/key.properties with " +
+                "storeFile, storePassword, keyAlias and keyPassword for your upload keystore."
+        )
+    }
+}
 
 // Maps SDK key: written from .env by tool/sync_native_keys.sh (git-ignored, never committed).
 val secrets = Properties().apply {
@@ -60,7 +74,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            if (hasReleaseKey) signingConfig = signingConfigs.getByName("release")
             // R8 shrinking with explicit keep rules (Razorpay needs them, or the release build fails).
             isMinifyEnabled = true
             isShrinkResources = true

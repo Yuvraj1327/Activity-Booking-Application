@@ -24,7 +24,7 @@ class VenuesMapScreen extends ConsumerStatefulWidget {
 }
 
 class _VenuesMapScreenState extends ConsumerState<VenuesMapScreen> {
-  static const _fallbackCenter = LatLng(20.5937, 78.9629);
+  static const _fallbackCenter = LatLng(12.9716, 77.5946); // Bangalore
 
   GoogleMapController? _controller;
   VenueSummary? _selected;
@@ -112,7 +112,7 @@ class _VenuesMapScreenState extends ConsumerState<VenuesMapScreen> {
                       GoogleMap(
                         initialCameraPosition: CameraPosition(
                           target: location.point == null ? _fallbackCenter : LatLng(location.point!.lat, location.point!.lng),
-                          zoom: location.point == null ? 4 : 12,
+                          zoom: 12,
                         ),
                         onMapCreated: (c) {
                           _controller = c;

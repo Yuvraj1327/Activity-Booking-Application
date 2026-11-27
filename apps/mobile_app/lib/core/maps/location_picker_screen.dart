@@ -21,8 +21,8 @@ class LocationPickerScreen extends ConsumerStatefulWidget {
 }
 
 class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
-  // Centre of India, zoomed out, when we know nothing else.
-  static const _fallbackCenter = LatLng(20.5937, 78.9629);
+  // Bangalore, when we know nothing else.
+  static const _fallbackCenter = LatLng(12.9716, 77.5946);
 
   GoogleMapController? _controller;
   late LatLng _center;
@@ -93,7 +93,7 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
             )
           : Stack(children: [
               GoogleMap(
-                initialCameraPosition: CameraPosition(target: _center, zoom: widget.initial == null ? 4 : 16),
+                initialCameraPosition: CameraPosition(target: _center, zoom: widget.initial == null ? 12 : 16),
                 onMapCreated: (c) => _controller = c,
                 onCameraMove: (p) => _center = p.target,
                 myLocationEnabled: _myLocationEnabled,
