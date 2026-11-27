@@ -5,13 +5,15 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import (
     AuthenticationError,
     ConflictError,
     NotFoundError,
+    PermissionDeniedError,
+    ServiceUnavailableError,
     ValidationFailedError,
 )
 from app.core.logging import request_id_ctx
@@ -65,7 +67,10 @@ class ProfileService:
         user_id = UUID(claims.sub)
         existing = await self.repo.get_profile(user_id)
         if existing is not None:
-            return self._existing_or_conflict(existing, payload), False
+            profile = self._existing_or_conflict(existing, payload)
+            if profile.role == "customer":  # heals an account registered before its customer row existed
+                await self.ensure_customer_profile(user_id)
+            return profile, False
 
         profile = Profile(
             id=user_id,
@@ -98,13 +103,58 @@ class ProfileService:
             if state == PG_UNIQUE_VIOLATION:  # concurrent first sign-in: someone else created it
                 existing = await self.repo.get_profile(user_id)
                 if existing is not None:
-                    return self._existing_or_conflict(existing, payload), False
+                    profile = self._existing_or_conflict(existing, payload)
+                    if profile.role == "customer":
+                        await self.ensure_customer_profile(user_id)
+                    return profile, False
             if state == PG_FK_VIOLATION:  # token is valid but the auth user no longer exists
                 raise AuthenticationError("Account not found.", code="USER_NOT_FOUND") from exc
             logger.error("profile_registration_failed", extra={"sqlstate": state}, exc_info=exc)
             raise
         await self.session.refresh(profile)
         return profile, True
+
+    async def ensure_customer_profile(self, user_id: UUID) -> None:
+        """Guarantee the `customer_profiles` row that `bookings.customer_id` (and payments, reviews,
+        favourites) reference. Idempotent and concurrency-safe; never touches owners or admins.
+
+        Raises 403 `CUSTOMER_PROFILE_REQUIRED` for a non-customer account and 503
+        `CUSTOMER_PROFILE_UNAVAILABLE` if the row cannot be created, instead of letting a foreign key
+        violation surface later as a 500."""
+        try:
+            if await self.repo.get_customer(user_id) is not None:
+                return
+            if await self.repo.insert_customer_profile_if_missing(user_id):
+                await self.repo.add_audit(
+                    AuditLog(
+                        actor_id=None,
+                        actor_role="system",
+                        action="customer_profile.provisioned",
+                        entity_type="profile",
+                        entity_id=str(user_id),
+                        metadata_={},
+                        request_id=request_id_ctx.get(),
+                    )
+                )
+            await self.session.commit()
+            if await self.repo.get_customer(user_id) is not None:
+                return
+        except SQLAlchemyError as exc:
+            await self.session.rollback()
+            logger.error(
+                "customer_profile_provisioning_failed", extra={"user_id": str(user_id)}, exc_info=exc
+            )
+            raise ServiceUnavailableError(
+                "Your account is not ready for booking yet. Please try again.",
+                code="CUSTOMER_PROFILE_UNAVAILABLE",
+            ) from exc
+        profile = await self.repo.get_profile(user_id)
+        if profile is not None and profile.role != "customer":
+            raise PermissionDeniedError("Only customer accounts can book.", code="CUSTOMER_PROFILE_REQUIRED")
+        raise ServiceUnavailableError(
+            "Your account is not ready for booking yet. Please try again.",
+            code="CUSTOMER_PROFILE_UNAVAILABLE",
+        )
 
     async def _notify_admins_of_registration(self, profile: Profile) -> None:
         """Tell active admins about a new customer or owner (de-duplicated per account)."""

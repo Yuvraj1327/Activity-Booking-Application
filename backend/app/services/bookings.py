@@ -55,6 +55,7 @@ from app.services.commission import CommissionService
 from app.services.coupons import CouponService
 from app.services.ledger import active_config, rules_of
 from app.services.notifications import EmailSpec, NotificationService
+from app.services.profiles import ProfileService
 
 _CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no 0/O/1/I/L
 _BUCKETS = ("upcoming", "past", "cancelled")
@@ -250,6 +251,8 @@ class BookingService:
             raise ValidationFailedError(
                 "Idempotency-Key must be 8 to 100 characters.", code="INVALID_IDEMPOTENCY_KEY"
             )
+        # bookings.customer_id references customer_profiles; make sure the row exists (idempotent).
+        await ProfileService(self.s).ensure_customer_profile(customer_id)
         digest = request_hash(body.resource_id, body.starts_at)
         if idempotency_key is not None:
             existing = await self._by_key(customer_id, idempotency_key)
