@@ -15,7 +15,7 @@ import { one, PAGE_SIZE, pageOf, resolveRange, type SearchParams } from "@/lib/q
 import type { Cursor } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Ledger" };
-type E = { id: string; kind: string; booking_id: string; booking_code: string; venue_name: string; owner_name: string; config_version: number; gross_paise: number; tax_paise: number; owner_amount_paise: number; platform_amount_paise: number; fee_paise: number; commission_paise: number; occurred_at: string };
+type E = { id: string; kind: string; booking_id: string; booking_code: string; venue_name: string; owner_name: string; config_version: number; gross_paise: number; tax_paise: number; owner_amount_paise: number; platform_amount_paise: number; fee_paise: number; commission_paise: number; commission_bps: number | null; commission_scope: string | null; commission_rule_version: number | null; occurred_at: string };
 
 export default async function LedgerPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
@@ -32,12 +32,12 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
         {!res.ok ? <div className="p-4"><ErrorState message={`Could not load the ledger (${res.error.message}).`} /></div> : res.data.items.length === 0 ? <EmptyState title="No ledger entries in this period" description="Entries exist only for payments captured under an approved configuration." /> : (
           <>
             <Table>
-              <THead><TR><TH>When</TH><TH>Entry</TH><TH>Booking</TH><TH>Owner</TH><TH className="text-right">Gross</TH><TH className="text-right">Owner share</TH><TH className="text-right">Platform</TH><TH className="text-right">Tax</TH><TH>Rule</TH></TR></THead>
+              <THead><TR><TH>When</TH><TH>Entry</TH><TH>Booking</TH><TH>Owner</TH><TH className="text-right">Gross</TH><TH className="text-right">Owner share</TH><TH className="text-right">Commission</TH><TH className="text-right">Platform</TH><TH className="text-right">Tax</TH><TH>Rule</TH></TR></THead>
               <TBody>{res.data.items.map((e) => (
                 <TR key={e.id}>
                   <TD className="whitespace-nowrap text-xs">{formatDateTime(e.occurred_at)}</TD><TD><StatusBadge status={e.kind === "sale" ? "paid" : "refunded"} /></TD>
                   <TD><Link href={`/bookings/${e.booking_id}`} className="text-primary hover:underline">{e.booking_code}</Link><p className="text-xs text-muted-foreground">{e.venue_name}</p></TD><TD>{e.owner_name}</TD>
-                  <TD className="text-right tabular-nums">{formatMoney(e.gross_paise)}</TD><TD className="text-right tabular-nums">{formatMoney(e.owner_amount_paise)}</TD><TD className="text-right tabular-nums">{formatMoney(e.platform_amount_paise)}</TD><TD className="text-right tabular-nums">{formatMoney(e.tax_paise)}</TD><TD>v{e.config_version}</TD>
+                  <TD className="text-right tabular-nums">{formatMoney(e.gross_paise)}</TD><TD className="text-right tabular-nums">{formatMoney(e.owner_amount_paise)}</TD><TD className="text-right tabular-nums">{formatMoney(e.commission_paise)}<p className="text-xs text-muted-foreground">{e.commission_bps == null ? "—" : `${(e.commission_bps / 100).toFixed(2).replace(/\.?0+$/, "")}% · ${e.commission_scope === "finance_config" ? "config" : `${e.commission_scope} v${e.commission_rule_version}`}`}</p></TD><TD className="text-right tabular-nums">{formatMoney(e.platform_amount_paise)}</TD><TD className="text-right tabular-nums">{formatMoney(e.tax_paise)}</TD><TD>v{e.config_version}</TD>
                 </TR>
               ))}</TBody>
             </Table>

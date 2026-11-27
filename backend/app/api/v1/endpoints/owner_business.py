@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Request, Response, status
@@ -12,6 +12,7 @@ from app.schemas.owner import AnalyticsOut, DashboardOut, NotificationPage
 from app.schemas.payment import OwnerEarningsOut, OwnerPaymentPage
 from app.schemas.review import OwnerReviewOut, OwnerReviewPage, ReplyCreate
 from app.services.bookings import BookingService
+from app.services.commission import CommissionService
 from app.services.owner_business import OwnerBusinessService
 from app.services.payments import PaymentService
 from app.services.reviews import ReviewService
@@ -78,6 +79,58 @@ async def earnings(request: Request, user: OwnerUser, session: DbSession) -> Own
     """Only what customers actually paid. Commission, tax, deductions and payouts are reported as
     unavailable because those rules are not approved yet (open questions Q7, Q8, Q10)."""
     return await _payments(request, session).owner_earnings(user.id)
+
+
+@router.get(
+    "/earnings/breakdown",
+    summary="Booking-wise earnings: gross, commission %, deductions, net payable (own venues only)",
+)
+async def earnings_breakdown(
+    request: Request,
+    user: OwnerUser,
+    session: DbSession,
+    venue_id: UUID | None = None,
+    date_from: Annotated[date | None, Query()] = None,
+    date_to: Annotated[date | None, Query()] = None,
+    limit: Limit = 20,
+    offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
+) -> dict[str, Any]:
+    """Read from the immutable ledger. `net_payable` is an accounting figure, not a completed transfer."""
+    lo = hi = None
+    if date_from or date_to:
+        from app.services.admin import AdminService
+
+        svc = AdminService(session, request.app.state.settings)
+        start, end = svc.resolve_range(date_from or date_to, date_to or date_from)
+        lo, hi = svc._bounds(start, end)
+    return await CommissionService(session, request.app.state.settings).owner_earnings(
+        user.id, venue_id=venue_id, lo=lo, hi=hi, limit=limit, offset=offset
+    )
+
+
+@router.get("/commission", summary="The commission rate that applies to each of my venues now, and its history")
+async def owner_commission(
+    request: Request, user: OwnerUser, session: DbSession, limit: Limit = 20,
+    offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
+) -> dict[str, Any]:
+    svc = CommissionService(session, request.app.state.settings)
+    hist = await svc.history(scope=None, venue_id=None, category_id=None, lo=None, hi=None,
+                             limit=limit, offset=offset, owner_id=user.id)
+    for h in hist["items"]:  # owners see rates and dates, never which admin or why
+        h.pop("changed_by", None), h.pop("changed_by_name", None), h.pop("reason", None)
+    return {"current": await svc.owner_current_rates(user.id), "history": hist,
+            "note": "A rate change only applies to bookings made after it takes effect. Bookings already made keep their rate."}
+
+
+@router.get("/earnings/bookings/{booking_id}", summary="How one booking's net earnings were calculated")
+async def earnings_booking(booking_id: UUID, request: Request, user: OwnerUser, session: DbSession) -> dict[str, Any]:
+    out = await CommissionService(session, request.app.state.settings).booking_detail(booking_id, owner_id=user.id)
+    if out["snapshot"]:  # internal rule ids / the other candidate rules are not for owners
+        for k in ("candidates", "priority", "rule_id"):
+            out["snapshot"].pop(k, None)
+    if out["calculation"]:
+        out["calculation"].pop("commission_rule_id", None)
+    return out
 
 
 @router.get("/payments", response_model=OwnerPaymentPage, summary="Payments received for my venues")

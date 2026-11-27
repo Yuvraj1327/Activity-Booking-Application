@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-const TABS = [["/finance", "Overview"], ["/finance/configs", "Fees, tax & commission"], ["/finance/ledger", "Ledger"], ["/finance/reconciliation", "Reconciliation"], ["/payouts", "Owner payouts"]] as const;
+const TABS = [["/finance", "Overview"], ["/finance/configs", "Fees, tax & commission"], ["/commission", "Commission"], ["/finance/ledger", "Ledger"], ["/finance/reconciliation", "Reconciliation"], ["/payouts", "Owner payouts"]] as const;
 
 export function FinanceTabs({ current }: { current: string }) {
   return (

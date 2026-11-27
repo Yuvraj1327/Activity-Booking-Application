@@ -51,6 +51,7 @@ from app.schemas.booking import (
     StatusEvent,
 )
 from app.services.availability import is_configured, load_busy, load_schedule, utcnow
+from app.services.commission import CommissionService
 from app.services.coupons import CouponService
 from app.services.ledger import active_config, rules_of
 from app.services.notifications import EmailSpec, NotificationService
@@ -321,6 +322,8 @@ class BookingService:
                         )
                     )
                     await self.s.flush()
+                    # The commission that applies to this booking is fixed now (immutable snapshot).
+                    await CommissionService(self.s, self.settings).snapshot_for_new_booking(booking, now)
                     if coupon is not None:
                         CouponService(self.s).redeem(coupon, booking, snap["discount_paise"])
                         await self.s.flush()

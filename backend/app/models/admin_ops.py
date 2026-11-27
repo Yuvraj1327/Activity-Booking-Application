@@ -166,6 +166,7 @@ class FinanceConfig(Base):
     tax_on: Mapped[str] = mapped_column(Text, nullable=False)
     commission_bps: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     discount_borne_by: Mapped[str] = mapped_column(Text, nullable=False)
+    commission_base: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'base'"))
     notes: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[UUID | None] = _fk("profiles.id", ondelete="SET NULL")
     created_at: Mapped[datetime] = _now()
@@ -196,6 +197,12 @@ class LedgerEntry(Base):
     discount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = _now()
+    # The commission actually applied (NULL on entries written before commission management existed).
+    commission_bps: Mapped[int | None] = mapped_column(Integer)
+    commission_scope: Mapped[str | None] = mapped_column(Text)
+    commission_rule_id: Mapped[UUID | None] = _fk("commission_rules.id", ondelete="RESTRICT")
+    commission_rule_version: Mapped[int | None] = mapped_column(Integer)
+    commission_base_paise: Mapped[int | None] = mapped_column(BigInteger)
 
 
 class Payout(TimestampMixin, Base):
@@ -295,3 +302,52 @@ class CmsContent(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'draft'"))
     published_at: Mapped[datetime | None] = _ts()
     updated_by: Mapped[UUID | None] = _fk("profiles.id", ondelete="SET NULL")
+
+
+class CommissionRule(Base):
+    """Identity of a commission rule (one per global / category / venue). Its history is in the versions."""
+
+    __tablename__ = "commission_rules"
+    id: Mapped[UUID] = uuid_pk()
+    scope: Mapped[str] = mapped_column(Text, nullable=False)
+    category_id: Mapped[UUID | None] = _fk("categories.id", ondelete="RESTRICT")
+    venue_id: Mapped[UUID | None] = _fk("venues.id", ondelete="RESTRICT")
+    created_by: Mapped[UUID | None] = _fk("profiles.id", ondelete="RESTRICT")
+    created_at: Mapped[datetime] = _now()
+
+
+class CommissionRuleVersion(Base):
+    """Append-only: every change is a new row. The state at time T is the row with the greatest effective_from <= T."""
+
+    __tablename__ = "commission_rule_versions"
+    id: Mapped[UUID] = uuid_pk()
+    rule_id: Mapped[UUID] = _fk("commission_rules.id", ondelete="RESTRICT", nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    commission_bps: Mapped[int] = mapped_column(Integer, nullable=False)
+    previous_bps: Mapped[int | None] = mapped_column(Integer)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    effective_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[UUID] = _fk("profiles.id", ondelete="RESTRICT", nullable=False)
+    created_at: Mapped[datetime] = _now()
+
+
+class BookingCommissionSnapshot(Base):
+    """The commission resolved for a booking when it was created. Never updated."""
+
+    __tablename__ = "booking_commission_snapshots"
+    booking_id: Mapped[UUID] = _fk("bookings.id", ondelete="RESTRICT", nullable=False, pk=True)
+    scope: Mapped[str] = mapped_column(Text, nullable=False)
+    rule_id: Mapped[UUID | None] = _fk("commission_rules.id", ondelete="RESTRICT")
+    rule_version_id: Mapped[UUID | None] = _fk("commission_rule_versions.id", ondelete="RESTRICT")
+    rule_version: Mapped[int | None] = mapped_column(Integer)
+    category_id: Mapped[UUID | None] = _fk("categories.id", ondelete="RESTRICT")
+    commission_bps: Mapped[int | None] = mapped_column(Integer)
+    effective_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    resolved_at: Mapped[datetime] = _now()
+    source: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'booking_created'"))
+    ambiguous: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    priority: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    candidates: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )

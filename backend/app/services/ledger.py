@@ -6,6 +6,7 @@ trigger); a refund adds a negative entry, a sale is never edited.
 """
 
 import logging
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -17,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser
 from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
 from app.domain import payment_state as pst
-from app.domain.finance_math import Rules, reversal, split_sale
+from app.domain.finance_math import Rules, commission_base_paise, reversal, split_sale
 from app.models import (
     Booking,
     FinanceConfig,
@@ -30,6 +31,7 @@ from app.models import (
     Venue,
 )
 from app.services import audit, platform_settings
+from app.services.commission import CommissionService
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +39,7 @@ logger = logging.getLogger(__name__)
 def rules_of(c: FinanceConfig) -> Rules:
     return Rules(
         c.platform_fee_bps, c.platform_fee_fixed_paise, c.tax_rate_bps, c.tax_on, c.commission_bps,
-        c.discount_borne_by,
+        c.discount_borne_by, c.commission_base,
     )  # fmt: skip
 
 
@@ -46,7 +48,7 @@ def config_out(c: FinanceConfig) -> dict[str, Any]:
         "id": c.id, "version": c.version, "status": c.status, "platform_fee_bps": c.platform_fee_bps,
         "platform_fee_fixed_paise": c.platform_fee_fixed_paise, "tax_rate_bps": c.tax_rate_bps,
         "tax_on": c.tax_on, "commission_bps": c.commission_bps, "discount_borne_by": c.discount_borne_by,
-        "notes": c.notes, "created_at": c.created_at, "approved_at": c.approved_at,
+        "commission_base": c.commission_base, "notes": c.notes, "created_at": c.created_at, "approved_at": c.approved_at,
         "effective_from": c.effective_from, "retired_at": c.retired_at,
     }  # fmt: skip
 
@@ -136,7 +138,7 @@ class FinanceService:
     async def accrue(self, limit: int = 1000) -> dict[str, int]:
         """Write ledger entries for captured payments and processed refunds that have none yet.
         Idempotent: each entry has a unique key, so running it twice changes nothing."""
-        sales = refunds = skipped = 0
+        sales = refunds = skipped = undecided = 0
         pays = (
             await self.s.execute(
                 select(Payment, Booking, Venue.owner_id)
@@ -153,22 +155,49 @@ class FinanceService:
                 .limit(limit)
             )
         ).all()
+        commissions = CommissionService(self.s)
         for p, b, owner_id in pays:
             cfg = await active_config(self.s, p.captured_at)
             if cfg is None:
                 skipped += 1
                 continue
+            # One commission entry per booking: a second captured payment on an already-accrued booking
+            # (duplicate payment, replayed callback with a new id) never earns commission again.
+            if await self.s.scalar(
+                select(func.count()).where(
+                    LedgerEntry.booking_id == p.booking_id, LedgerEntry.kind == "sale",
+                    LedgerEntry.payment_id != p.id,
+                )
+            ):
+                skipped += 1
+                continue
             snap = b.price_snapshot or {}
+            # The rate was fixed when the booking was created; rule edits since then do not matter.
+            cs = await commissions.snapshot_for_booking(b, at=b.created_at, source="accrual_backfill")
+            rules = rules_of(cfg)
+            if cs.ambiguous:
+                # Several sports with different activity rules and no approved tie-break: never guess a rate.
+                undecided += 1
+                continue
+            if cs.scope == "none":
+                c_scope, c_bps, c_rule, c_ver = "finance_config", cfg.commission_bps, None, None
+            else:
+                assert cs.commission_bps is not None
+                c_scope, c_bps, c_rule, c_ver = cs.scope, cs.commission_bps, cs.rule_id, cs.rule_version
+                rules = replace(rules, commission_bps=c_bps)
             try:
                 sp = split_sale(
                     p.amount_paise, int(snap.get("base_amount_paise", b.base_amount_paise)),
                     int(snap.get("fees_paise", 0)), int(snap.get("tax_paise", 0)),
-                    int(snap.get("discount_paise", 0)), rules_of(cfg),
+                    int(snap.get("discount_paise", 0)), rules,
                 )  # fmt: skip
             except ValueError:
                 logger.warning("ledger_price_mismatch", extra={"payment_id": str(p.id)})
                 skipped += 1
                 continue
+            c_base = commission_base_paise(
+                int(snap.get("base_amount_paise", b.base_amount_paise)), int(snap.get("discount_paise", 0)), rules
+            )
             if await self._insert(
                 LedgerEntry(
                     entry_key=f"sale:{p.id}",
@@ -186,6 +215,11 @@ class FinanceService:
                     fee_paise=sp.fee,
                     commission_paise=sp.commission,
                     discount_paise=sp.discount,
+                    commission_bps=c_bps,
+                    commission_scope=c_scope,
+                    commission_rule_id=c_rule,
+                    commission_rule_version=c_ver,
+                    commission_base_paise=c_base,
                     occurred_at=p.captured_at,
                 )
             ):
@@ -249,12 +283,18 @@ class FinanceService:
                     fee_paise=-ratio_fee,
                     commission_paise=-ratio_com,
                     discount_paise=0,
+                    commission_bps=sale.commission_bps,
+                    commission_scope=sale.commission_scope,
+                    commission_rule_id=sale.commission_rule_id,
+                    commission_rule_version=sale.commission_rule_version,
+                    commission_base_paise=None,
                     occurred_at=r.processed_at or datetime.now(UTC),
                 )
             ):
                 refunds += 1
         await self.s.commit()
-        return {"sales": sales, "refunds": refunds, "skipped_no_rule_or_no_sale": skipped}
+        return {"sales": sales, "refunds": refunds, "skipped_no_rule_or_no_sale": skipped,
+                "blocked_ambiguous_commission": undecided}
 
     async def _insert(self, e: LedgerEntry) -> bool:
         try:

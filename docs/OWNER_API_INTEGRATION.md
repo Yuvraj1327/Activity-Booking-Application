@@ -46,7 +46,7 @@ Base URL: `API_BASE_URL` (default `http://localhost:8008/api/v1`). One Dio clien
 
 | Screen / action | Endpoint(s) | Status |
 |---|---|---|
-| Payments & Earnings | `GET /owners/earnings`, `GET /owners/payments` | Real **gross** amounts and payment records. Deductions, net earnings, payout status: `available:false`, shown as "Not available yet" (rules unapproved: Q7, Q8, Q10). No commission, GST or settlement figure is displayed. |
+| Payments & Earnings | `GET /owners/earnings`, `GET /owners/payments` | Real **gross** amounts and payment records. Deductions, net earnings, payout status: `available:false`, shown as "Not available yet" (rules unapproved: Q7, Q8, Q10). No commission, GST or settlement figure is displayed **unless** the backend reports `GET /owners/earnings/breakdown` as `available:true` (an approved finance configuration exists); then the screen shows commission %, net payable and the per-booking calculation. See [COMMISSION_MANAGEMENT.md](COMMISSION_MANAGEMENT.md). |
 | Booking details → Payment line | `payment_status` on the booking | Paid / Payment pending / Payment failed / Refunded / Not paid |
 | Notifications | `GET /owners/notifications…` (unchanged) + push | New booking and payment notifications are created by verified payments; tapping a push opens the booking |
 | Device token | `PUT /devices/token`, `POST /devices/token/remove` | Registered after sign-in, removed before sign-out |

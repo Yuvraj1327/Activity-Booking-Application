@@ -257,6 +257,20 @@ async def approve_config(
     return await _fin(session).approve(user, config_id, body.reason)
 
 
+async def _commission_summary(
+    request: Request, session: DbSession, lo: datetime, hi: datetime
+) -> dict[str, Any]:
+    from app.services.commission import CommissionService
+
+    rep = await CommissionService(session, request.app.state.settings).report(lo, hi)
+    t = rep["totals"]
+    return {
+        "net_commission_paise": t["net_commission_paise"], "commission_accrued_paise": t["commission_accrued_paise"],
+        "commission_reversed_paise": t["commission_reversed_paise"], "bookings": t["bookings"],
+        "reconciled": rep["reconciliation"]["ok"],
+    }  # fmt: skip
+
+
 @router.get(
     "/finance/summary", summary="Platform revenue, owner earnings, refunds and what is still undecided"
 )
@@ -278,6 +292,7 @@ async def finance_summary(
         "range": {"date_from": start, "date_to": end},
         "active_config": None if cfg is None else {"id": cfg.id, "version": cfg.version, "effective_from": cfg.effective_from},
         "ledger": await fin.totals(lo, hi) if approved else None,
+        "commission": await _commission_summary(request, session, lo, hi) if approved else None,
         "coverage": await fin.coverage(lo, hi),
         "refunds": refunds,
         "payouts": {

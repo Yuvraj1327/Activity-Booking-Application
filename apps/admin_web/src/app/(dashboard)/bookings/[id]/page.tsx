@@ -12,6 +12,7 @@ import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { adminGet, safe } from "@/lib/admin-api";
 import { hasPermission } from "@/lib/admin-access";
 import { duration, formatDate, formatDateTime, formatMoney, titleCase } from "@/lib/format";
+import { CommissionPanel } from "@/components/data/commission-panel";
 import type { BookingDetail } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Booking" };
@@ -94,6 +95,8 @@ export default async function BookingPage({ params }: { params: Promise<{ id: st
           <div className="flex justify-between border-t border-border pt-2 font-semibold"><dt>Total charged</dt><dd className="tabular-nums">{formatMoney(b.total_amount_paise, b.currency)}</dd></div>
         </dl>
       </Card>
+
+      <CommissionPanel bookingId={b.id} />
 
       <Card>
         <CardHeader><CardTitle>Payment records</CardTitle></CardHeader>

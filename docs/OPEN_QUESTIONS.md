@@ -72,7 +72,7 @@ Every item below is explained further, with why it matters, in the sections that
 | Q5 | Which payment gateway? | Integration design, payout capability, fees, KYC. Recommendation: evaluate Razorpay given INR and UPI. | Stage 3 (payments schema), Stage 7 | **Blocker** |
 | Q6 | Is wallet payment in scope? | Payment UI and provider support. | Stage 7 | Later |
 | Q7 | Platform fee and tax rules (rates, base, rounding, who is the taxable supplier, invoicing)? | Pricing engine, summary screen, reporting. Needs tax/accounting advice. | Stage 6 | **Blocker** |
-| Q8 | Owner commission / platform revenue model? | Earnings, payouts, admin revenue figures. | Stage 6 | **Blocker** |
+| Q8 | Owner commission / platform revenue model? **Technical foundation built** (global / activity / venue rules, immutable snapshots, ledger): see `COMMISSION_MANAGEMENT.md` §8 for what the business still has to approve. | Earnings, payouts, admin revenue figures. | Stage 6 | **Blocker** (approval) |
 | Q9 | Cancellation and refund policy (windows, percentages, who can cancel, gateway-fee treatment)? | Booking state machine, refund flow, UI copy. | Stage 6 | **Blocker** |
 | Q10 | How and when are owners paid (schedule, thresholds, method, KYC, holds, disputes)? | Payout schema, provider choice, owner earnings screens. | Stage 8 | Soon |
 | Q11 | Exact booking statuses and permitted transitions? | Consistency across three apps. A proposal is in architecture doc §6.5. | Stage 3 | **Blocker** |

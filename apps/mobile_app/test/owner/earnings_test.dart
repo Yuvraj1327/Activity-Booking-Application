@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_shared/flutter_shared.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zuruv/core/router/app_router.dart';
@@ -67,6 +68,34 @@ void main() {
     await tester.tap(find.text('Try again'));
     await tester.pumpAndSettle();
     expect(find.text('Gross paid by customers'), findsOneWidget);
+  });
+
+  testWidgets('shows commission %, deductions and net payable per booking once the backend provides them', (tester) async {
+    final repo = FakeOwnerRepository()
+      ..earningsResult = earnings(gross: 49560, count: 1)
+      ..breakdownResult = EarningsBreakdown.fromJson({
+        'available': true,
+        'note': 'Net payable is a record, not a transfer.',
+        'totals': {'customer_paid_paise': 49560, 'commission_paise': 4000, 'net_payable_paise': 36000, 'net_after_refunds_paise': 36000},
+        'items': [
+          {
+            'booking_id': 'b1', 'booking_code': 'ZUR-ABCD2345', 'venue_name': 'Ace Arena', 'customer_paid_paise': 49560,
+            'court_charge_paise': 40000, 'platform_fee_paise': 2000, 'tax_paise': 7560, 'discount_paise': 0,
+            'commission_bps': 1000, 'commission_pct': '10%', 'commission_paise': 4000, 'other_deductions_paise': 0,
+            'net_payable_paise': 36000, 'refunded_paise': 0, 'net_after_refunds_paise': 36000,
+            'formula': '10% of the commission base (40000 paise), rounded half-up to the paisa',
+          },
+        ],
+      });
+    await openEarnings(tester, repo);
+    expect(find.text('Commission & net earnings'), findsOneWidget);
+    expect(find.text('Not available yet'), findsNothing);
+    expect(find.textContaining('Commission 10%'), findsOneWidget);
+    await tester.scrollUntilVisible(find.textContaining('Ace Arena · ZUR-ABCD2345'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.textContaining('Ace Arena · ZUR-ABCD2345'));
+    await tester.pumpAndSettle();
+    expect(find.text('Net payable to you'), findsOneWidget);
+    expect(find.textContaining('10% of the commission base'), findsOneWidget);
   });
 
   test('earnings parse the backend shape and keep unavailable fields unavailable', () {

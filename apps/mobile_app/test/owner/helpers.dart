@@ -317,6 +317,10 @@ class FakeOwnerRepository implements OwnerRepository {
   );
   List<OwnerPayment> paymentList = [];
   Object? earningsError;
+  EarningsBreakdown breakdownResult = const EarningsBreakdown(available: false);
+
+  @override
+  Future<EarningsBreakdown> earningsBreakdown() async => breakdownResult;
 
   @override
   Future<OwnerEarnings> earnings() async {

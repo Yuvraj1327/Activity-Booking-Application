@@ -25,6 +25,8 @@ PERMISSIONS: dict[str, str] = {
     "finance.view": "View finance configuration, ledger, payouts and reports",
     "finance.manage": "Create finance configuration drafts and run reconciliation",
     "finance.approve": "Approve finance configurations (fees, tax, commission)",
+    "commission.view": "View commission rules, history and commission reports",
+    "commission.manage": "Create, change, activate and deactivate commission rules",
     "payouts.manage": "Create, approve and record owner payouts",
     "support.manage": "Handle support tickets",
     "categories.manage": "Manage sports categories",
@@ -43,6 +45,7 @@ SENSITIVE = frozenset(
     {
         "refunds.manage",
         "finance.approve",
+        "commission.manage",
         "payouts.manage",
         "bookings.manage",
         "settings.manage",

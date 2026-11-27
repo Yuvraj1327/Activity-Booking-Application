@@ -185,6 +185,12 @@ class OwnerRepository {
         return OwnerEarnings.fromJson(res.data!);
       });
 
+  /// Booking-wise commission and net payable. Read-only; the backend does all the arithmetic.
+  Future<EarningsBreakdown> earningsBreakdown() => apiCall(() async {
+        final res = await _dio.get<Map<String, dynamic>>('/owners/earnings/breakdown');
+        return EarningsBreakdown.fromJson(res.data!);
+      });
+
   Future<OwnerPaymentPage> payments({int offset = 0}) => apiCall(() async {
         final res = await _dio.get<Map<String, dynamic>>('/owners/payments', queryParameters: {'offset': offset});
         return OwnerPaymentPage.fromJson(res.data!);

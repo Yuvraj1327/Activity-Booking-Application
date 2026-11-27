@@ -1,6 +1,6 @@
 import {
   Activity, BadgeCheck, BarChart3, Bell, BookOpen, CalendarCheck, CreditCard, Flag, Gavel, Banknote, KeyRound,
-  Landmark, LayoutDashboard, LifeBuoy, MapPin, Scale, ScrollText, Settings, Store, Tags, Ticket, ToggleRight, Undo2, Users,
+  Landmark, LayoutDashboard, Percent, LifeBuoy, MapPin, Scale, ScrollText, Settings, Store, Tags, Ticket, ToggleRight, Undo2, Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,6 +28,7 @@ export const navGroups: NavGroup[] = [
     { label: "Payments", href: "/payments", icon: CreditCard, perm: "payments.view" },
     { label: "Refunds", href: "/refunds", icon: Undo2, perm: "payments.view" },
     { label: "Finance", href: "/finance", icon: Landmark, perm: "finance.view" },
+    { label: "Commission", href: "/commission", icon: Percent, perm: "commission.view" },
     { label: "Owner payouts", href: "/payouts", icon: Banknote, perm: "finance.view" },
     { label: "Reconciliation", href: "/finance/reconciliation", icon: Scale, perm: "finance.view" },
   ] },

@@ -27,3 +27,16 @@ Only the backend decides. "Admin" means a `profiles.role = 'admin'`, active, MFA
 ## Pending decision
 
 Q18 (moderation and suspension powers, and what suspension does to future bookings) is **open**. The current implementation is the conservative default: suspend and reactivate only, nothing automatic happens to bookings, no admin edits to vendor listings. A broader admin role-based model (N12) is not built.
+
+## Commission management permissions
+
+Added with migration `0012`. `super_admin` has both automatically; custom roles must be granted them.
+
+| Permission | Allows |
+|---|---|
+| `commission.view` | Read commission rules, history, the calculation preview. Shows the Commission menu. |
+| `commission.manage` | Create rules; change, activate, deactivate (sensitive: shown with a warning in the role editor). |
+| `finance.view` (existing) | Commission reports, booking commission details, owner earnings view. |
+| `exports.download` + `finance.view` | `commission.csv` export. |
+
+Customers and owners cannot reach any `/admin/commission/*` route (403). Owners can read only their own venues' rates and earnings under `/owners/commission` and `/owners/earnings/*`. See [COMMISSION_MANAGEMENT.md](COMMISSION_MANAGEMENT.md).

@@ -531,6 +531,97 @@ class OwnerEarnings {
   final PendingFeature payouts;
 }
 
+/// One booking's earnings, exactly as the backend calculated them (the app never calculates money).
+class EarningItem {
+  const EarningItem({
+    required this.bookingId,
+    required this.bookingCode,
+    required this.venueName,
+    required this.customerPaidPaise,
+    required this.courtChargePaise,
+    required this.platformFeePaise,
+    required this.taxPaise,
+    required this.discountPaise,
+    required this.commissionBps,
+    required this.commissionPct,
+    required this.commissionPaise,
+    required this.otherDeductionsPaise,
+    required this.netPayablePaise,
+    required this.refundedPaise,
+    required this.netAfterRefundsPaise,
+    required this.formula,
+  });
+  factory EarningItem.fromJson(Map<String, dynamic> j) => EarningItem(
+        bookingId: j['booking_id'] as String? ?? '',
+        bookingCode: j['booking_code'] as String? ?? '',
+        venueName: j['venue_name'] as String? ?? '',
+        customerPaidPaise: (j['customer_paid_paise'] as num?)?.toInt() ?? 0,
+        courtChargePaise: (j['court_charge_paise'] as num?)?.toInt() ?? 0,
+        platformFeePaise: (j['platform_fee_paise'] as num?)?.toInt() ?? 0,
+        taxPaise: (j['tax_paise'] as num?)?.toInt() ?? 0,
+        discountPaise: (j['discount_paise'] as num?)?.toInt() ?? 0,
+        commissionBps: (j['commission_bps'] as num?)?.toInt(),
+        commissionPct: j['commission_pct'] as String?,
+        commissionPaise: (j['commission_paise'] as num?)?.toInt() ?? 0,
+        otherDeductionsPaise: (j['other_deductions_paise'] as num?)?.toInt() ?? 0,
+        netPayablePaise: (j['net_payable_paise'] as num?)?.toInt() ?? 0,
+        refundedPaise: (j['refunded_paise'] as num?)?.toInt() ?? 0,
+        netAfterRefundsPaise: (j['net_after_refunds_paise'] as num?)?.toInt() ?? 0,
+        formula: j['formula'] as String? ?? '',
+      );
+  final String bookingId;
+  final String bookingCode;
+  final String venueName;
+  final int customerPaidPaise;
+  final int courtChargePaise;
+  final int platformFeePaise;
+  final int taxPaise;
+  final int discountPaise;
+  final int? commissionBps;
+  final String? commissionPct;
+  final int commissionPaise;
+  final int otherDeductionsPaise;
+  final int netPayablePaise;
+  final int refundedPaise;
+  final int netAfterRefundsPaise;
+  final String formula;
+}
+
+/// Booking-wise earnings with commission. `available` is false until an approved finance configuration exists.
+class EarningsBreakdown {
+  const EarningsBreakdown({
+    required this.available,
+    this.reason = '',
+    this.note = '',
+    this.customerPaidPaise = 0,
+    this.commissionPaise = 0,
+    this.netPayablePaise = 0,
+    this.netAfterRefundsPaise = 0,
+    this.items = const [],
+  });
+  factory EarningsBreakdown.fromJson(Map<String, dynamic> j) {
+    final t = (j['totals'] as Map<String, dynamic>?) ?? const {};
+    return EarningsBreakdown(
+      available: j['available'] == true,
+      reason: j['reason'] as String? ?? '',
+      note: j['note'] as String? ?? '',
+      customerPaidPaise: (t['customer_paid_paise'] as num?)?.toInt() ?? 0,
+      commissionPaise: (t['commission_paise'] as num?)?.toInt() ?? 0,
+      netPayablePaise: (t['net_payable_paise'] as num?)?.toInt() ?? 0,
+      netAfterRefundsPaise: (t['net_after_refunds_paise'] as num?)?.toInt() ?? 0,
+      items: [for (final i in (j['items'] as List<dynamic>? ?? const [])) EarningItem.fromJson(i as Map<String, dynamic>)],
+    );
+  }
+  final bool available;
+  final String reason;
+  final String note;
+  final int customerPaidPaise;
+  final int commissionPaise;
+  final int netPayablePaise;
+  final int netAfterRefundsPaise;
+  final List<EarningItem> items;
+}
+
 class OwnerBusiness {
   const OwnerBusiness({required this.businessName, this.businessPhone, this.businessEmail, this.businessAddress});
   factory OwnerBusiness.fromJson(Map<String, dynamic> j) => OwnerBusiness(

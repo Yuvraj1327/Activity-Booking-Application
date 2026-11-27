@@ -11,6 +11,7 @@ const ALLOWED: Record<string, string[]> = {
   refunds: ["status", "from", "to"],
   ledger: ["owner_id", "from", "to"],
   payouts: ["owner_id"],
+  commission: ["venue_id", "category_id", "owner_id", "from", "to"],
   analytics: ["dimension", "from", "to"],
   reconciliation: ["run_id"],
 };

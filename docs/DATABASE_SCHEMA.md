@@ -158,3 +158,8 @@ No existing table was duplicated; existing tables were extended:
 | `customer_profiles` | `preferred_category_ids uuid[]` (sports interests, max 20, validated against `categories` by the API) |
 | `notification_preferences` | `booking_enabled`, `payment_enabled`, `promo_enabled` (default true) |
 | `support_tickets` (**new**, the only new table) | `user_id`, `kind` (`support`/`feedback`/`issue`), `subject`, `message`, `app_version`, `platform`, `status` (`open`/`closed`); RLS on, all client grants revoked (API only) |
+
+
+## Commission management (migration 0012)
+
+`commission_rules`, `commission_rule_versions` (append-only history) and `booking_commission_snapshots` (immutable per booking); `ledger_entries` gained `commission_bps`, `commission_scope`, `commission_rule_id`, `commission_rule_version`, `commission_base_paise`; `finance_configs` gained `commission_base`. All new tables have RLS enabled with no API-role grants. Details and rules: [COMMISSION_MANAGEMENT.md](COMMISSION_MANAGEMENT.md).

@@ -177,7 +177,7 @@ TABLES = [
     "email_deliveries", "reviews", "review_responses", "support_tickets",
     "platform_settings", "admin_roles", "admin_profiles", "venue_moderation_events", "venue_reports",
     "owner_kyc_documents", "support_ticket_messages", "disputes", "dispute_events", "refunds",
-    "finance_configs", "ledger_entries", "payouts", "reconciliation_runs", "reconciliation_items",
+    "finance_configs", "commission_rules", "commission_rule_versions", "booking_commission_snapshots", "ledger_entries", "payouts", "reconciliation_runs", "reconciliation_items",
     "coupons", "coupon_redemptions", "cms_contents",
 ]  # fmt: skip
 

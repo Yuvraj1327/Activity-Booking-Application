@@ -10,6 +10,15 @@ import 'package:zuruv/owner/shared/repositories/owner_repository.dart';
 import 'package:zuruv/owner/shared/widgets/common_widgets.dart';
 
 final earningsProvider = FutureProvider.autoDispose<OwnerEarnings>((ref) => ref.watch(ownerRepositoryProvider).earnings());
+/// Commission and net payable per booking. If it cannot be loaded the screen simply keeps showing the
+/// "not available" card: nothing is ever estimated on the phone.
+final earningsBreakdownProvider = FutureProvider.autoDispose<EarningsBreakdown>((ref) async {
+  try {
+    return await ref.watch(ownerRepositoryProvider).earningsBreakdown();
+  } catch (_) {
+    return const EarningsBreakdown(available: false);
+  }
+});
 final ownerPaymentsProvider =
     FutureProvider.autoDispose<OwnerPaymentPage>((ref) => ref.watch(ownerRepositoryProvider).payments());
 
@@ -23,6 +32,7 @@ class EarningsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(earningsProvider);
     final payments = ref.watch(ownerPaymentsProvider);
+    final breakdown = ref.watch(earningsBreakdownProvider).valueOrNull;
     return Scaffold(
       appBar: AppBar(title: const Text('Payments & Earnings'), titleSpacing: Gap.page),
       body: data.when(
@@ -30,6 +40,7 @@ class EarningsScreen extends ConsumerWidget {
         error: (e, _) => ErrorView.fromError(e, onRetry: () {
           ref.invalidate(earningsProvider);
           ref.invalidate(ownerPaymentsProvider);
+          ref.invalidate(earningsBreakdownProvider);
         }),
         data: (e) => ResponsivePage(
           maxWidth: 720,
@@ -37,6 +48,7 @@ class EarningsScreen extends ConsumerWidget {
             onRefresh: () async {
               ref.invalidate(earningsProvider);
               ref.invalidate(ownerPaymentsProvider);
+              ref.invalidate(earningsBreakdownProvider);
             },
             child: ListView(
               padding: const EdgeInsets.only(top: 4, bottom: 32),
@@ -103,6 +115,14 @@ class EarningsScreen extends ConsumerWidget {
                         )
                       : Column(children: [for (final p in page.items) _PaymentTile(payment: p)]),
                 ),
+                if (breakdown != null && breakdown.available) ...[
+                  const SectionHeader('Commission & net earnings'),
+                  _BreakdownSummary(b: breakdown, currency: e.currency),
+                  const SizedBox(height: Gap.sm),
+                  for (final i in breakdown.items) _EarningTile(item: i, currency: e.currency),
+                  if (breakdown.note.isNotEmpty)
+                    Text(breakdown.note, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: ZuruvColors.textSecondary)),
+                ] else ...[
                 const SectionHeader('Deductions, net earnings & payouts'),
                 UnavailableCard(
                   title: 'Not available yet',
@@ -111,6 +131,7 @@ class EarningsScreen extends ConsumerWidget {
                       : e.payouts.message,
                   icon: Icons.account_balance_outlined,
                 ),
+                ],
                 const SizedBox(height: Gap.md),
                 OwnerCard(
                   padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
@@ -172,6 +193,79 @@ class _PaymentTile extends StatelessWidget {
             ],
           ),
         ]),
+      ),
+    );
+  }
+}
+
+class _BreakdownSummary extends StatelessWidget {
+  const _BreakdownSummary({required this.b, required this.currency});
+
+  final EarningsBreakdown b;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      HeroStatCard(label: 'Net earnings after commission', icon: Icons.savings_rounded, value: formatMoney(b.netAfterRefundsPaise, currency: currency)),
+      const SizedBox(height: Gap.md),
+      IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Expanded(child: StatTile(label: 'Platform commission', icon: Icons.percent_rounded, value: formatMoney(b.commissionPaise, currency: currency))),
+          const SizedBox(width: Gap.md),
+          Expanded(child: StatTile(label: 'Paid by customers', icon: Icons.payments_rounded, value: formatMoney(b.customerPaidPaise, currency: currency))),
+        ]),
+      ),
+    ]);
+  }
+}
+
+class _EarningTile extends StatelessWidget {
+  const _EarningTile({required this.item, required this.currency});
+
+  final EarningItem item;
+  final String currency;
+
+  Widget _row(BuildContext context, String label, int paise, {bool bold = false, bool minus = false}) {
+    final style = Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: bold ? FontWeight.w800 : FontWeight.w500);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Flexible(child: Text(label, style: style?.copyWith(color: bold ? null : ZuruvColors.textSecondary))),
+        Text('${minus ? '− ' : ''}${formatMoney(paise, currency: currency)}', style: style),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final i = item;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gap.sm),
+      child: OwnerCard(
+        padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            title: Text('${i.venueName} · ${i.bookingCode}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text('Commission ${i.commissionPct ?? '—'} · Net ${formatMoney(i.netPayablePaise, currency: currency)}'),
+            children: [
+              _row(context, 'Customer paid', i.customerPaidPaise),
+              _row(context, 'Court charge', i.courtChargePaise),
+              if (i.platformFeePaise > 0) _row(context, 'Platform fee (paid by customer)', i.platformFeePaise),
+              if (i.taxPaise > 0) _row(context, 'Tax (collected, not yours)', i.taxPaise),
+              _row(context, 'Commission ${i.commissionPct ?? ''}'.trim(), i.commissionPaise, minus: true),
+              if (i.otherDeductionsPaise != 0) _row(context, 'Other deductions', i.otherDeductionsPaise, minus: true),
+              const Divider(height: Gap.md),
+              _row(context, 'Net payable to you', i.netPayablePaise, bold: true),
+              if (i.refundedPaise > 0) _row(context, 'After refunds (${formatMoney(i.refundedPaise, currency: currency)} refunded)', i.netAfterRefundsPaise),
+              const SizedBox(height: Gap.xs),
+              Text(i.formula, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: ZuruvColors.textSecondary)),
+            ],
+          ),
+        ),
       ),
     );
   }

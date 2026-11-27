@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ActionButton } from "@/components/data/action-button";
 import { DateRangeFilter } from "@/components/data/date-range-filter";
 import { ExportButton } from "@/components/data/export-button";
@@ -17,6 +18,7 @@ export const metadata: Metadata = { title: "Finance" };
 type S = {
   range: { date_from: string; date_to: string };
   active_config: { id: string; version: number; effective_from: string } | null;
+  commission?: { net_commission_paise: number; commission_accrued_paise: number; commission_reversed_paise: number; bookings: number; reconciled: boolean } | null;
   ledger: { net_gross: number; owner: number; platform: number; tax: number; sales: number; refunds: number; entries: number } | null;
   coverage: { captured_payments: number; with_ledger_entry: number; without_ledger_entry: number };
   refunds: { processed_paise: number; processed_count: number; in_flight_count: number; failed_count: number };
@@ -47,6 +49,11 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
               <StatCard label="Owner earnings" value={s.ledger ? formatMoney(s.ledger.owner) : "Not available"} hint={s.ledger ? "After commission and refund reversals" : "Needs an approved configuration (Q8)"} />
               <StatCard label="Tax collected" value={s.ledger ? formatMoney(s.ledger.tax) : "Not available"} hint={s.ledger ? "Held for remittance; not revenue" : "Needs an approved configuration (Q7)"} />
               <StatCard label="Refunds processed" value={formatMoney(s.refunds.processed_paise)} hint={`${formatNumber(s.refunds.processed_count)} processed · ${s.refunds.in_flight_count} in progress · ${s.refunds.failed_count} failed`} tone="warning" />
+            </section>
+            <section className="grid gap-4 sm:grid-cols-3" aria-label="Commission">
+              <StatCard label="Platform commission" value={s.commission ? formatMoney(s.commission.net_commission_paise) : "Not available"} hint={s.commission ? `${formatMoney(s.commission.commission_accrued_paise)} accrued − ${formatMoney(s.commission.commission_reversed_paise)} reversed · ${s.commission.bookings} bookings` : "Needs an approved configuration (Q7, Q8)"} tone="success" />
+              <StatCard label="Commission reconciliation" value={s.commission ? (s.commission.reconciled ? "Reconciled" : "Differences found") : "Not available"} hint="Ledger against payment and refund records" tone={s.commission && !s.commission.reconciled ? "danger" : "primary"} />
+              <div className="flex items-center"><Link href="/commission" className="text-sm text-primary hover:underline">Manage commission rules, history and reports →</Link></div>
             </section>
             <section className="grid gap-4 sm:grid-cols-3">
               <StatCard label="Rule in force" value={s.active_config ? `Version ${s.active_config.version}` : "None approved"} hint={s.active_config ? `Since ${formatDateTime(s.active_config.effective_from)}` : "No fee, tax or commission is applied anywhere"} tone={s.active_config ? "success" : "warning"} />

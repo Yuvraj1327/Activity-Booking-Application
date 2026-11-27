@@ -12,6 +12,7 @@ import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { adminGet, safe } from "@/lib/admin-api";
 import { hasPermission } from "@/lib/admin-access";
 import { formatDateTime, formatMoney, titleCase } from "@/lib/format";
+import { CommissionPanel } from "@/components/data/commission-panel";
 import type { PaymentDetail } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Payment" };
@@ -32,6 +33,8 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader title={`Payment ${p.id.slice(0, 8)}`} description="Gateway record. No card data is stored." actions={<StatusBadge status={p.status} />} />
       {p.review_required && <Alert data-testid="review-banner">Needs review: {p.review_reason ?? "flagged by the payment rules"}. No automatic refund is made.</Alert>}
+
+      <CommissionPanel bookingId={p.booking_id} />
 
       <Card data-testid="refund-panel">
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">

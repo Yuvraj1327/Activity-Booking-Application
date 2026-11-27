@@ -52,6 +52,7 @@ None of these has an invented default. Each one is an open business decision; le
 | Variable | Values | Empty means | Open question |
 |---|---|---|---|
 | `BOOKING_MODE` | `hold` (default) or `instant` | `hold`: a booking reserves the slot as `pending_payment` until paid or expired. `instant`: confirmed immediately, `payment_status` stays `unpaid` (testing or venues without online payment). It never pretends a payment happened. | Q11 |
+| `COMMISSION_ACTIVITY_TIEBREAK` | `lowest` / `highest` | Unset: a venue whose sports have different activity commission rules gets no rate and is not accrued (client decision pending). | commission |
 | `BOOKING_HOLD_MINUTES` | 1–1440 | In `hold` mode `POST /bookings` answers `503 BOOKING_NOT_CONFIGURED`. | N4 |
 | `CANCELLATION_MIN_NOTICE_HOURS` | 0–8760 | Customers cannot cancel a **confirmed** booking online (`409 CANCELLATION_NOT_AVAILABLE`). Unpaid holds can always be released. Paid bookings cannot be cancelled until the refund policy exists (Step 7). | Q9 |
 | `BOOKING_MIN_NOTICE_MINUTES` | 0–525600 | No minimum notice (a slot must still not have started). | N6 |

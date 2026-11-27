@@ -134,6 +134,7 @@ class FinanceConfigCreate(StrictModel):
     tax_on: Literal["fee", "base_and_fee"]
     commission_bps: int = Field(ge=0, le=10000)
     discount_borne_by: Literal["platform", "owner"]
+    commission_base: Literal["base", "base_after_discount"] = "base"
     notes: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)] | None = None
 
 

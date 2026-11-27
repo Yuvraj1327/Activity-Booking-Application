@@ -33,6 +33,9 @@ class Rules:
     tax_on: str
     commission_bps: int
     discount_borne_by: str
+    # Which amount the commission percentage applies to. 'base' = slot price before discount, fee and tax
+    # (the behaviour before commission management). The approved choice is still open (Q7/Q8).
+    commission_base: str = "base"
 
 
 @dataclass(frozen=True)
@@ -63,11 +66,18 @@ class Split:
     discount: int
 
 
+def commission_base_paise(base: int, discount: int, r: Rules) -> int:
+    """The amount the commission percentage is applied to, as configured (never below zero)."""
+    if r.commission_base == "base_after_discount":
+        return max(base - discount, 0)
+    return base
+
+
 def split_sale(gross: int, base: int, fee: int, tax: int, discount: int, r: Rules) -> Split:
     """Who gets what from one captured payment. owner + platform + tax == gross always."""
     if base + fee + tax - discount != gross:
         raise ValueError("price components do not add up to the amount paid")
-    commission = mul_bps(base, r.commission_bps)
+    commission = mul_bps(commission_base_paise(base, discount, r), r.commission_bps)
     owner = base - commission - (discount if r.discount_borne_by == "owner" else 0)
     platform = fee + commission - (discount if r.discount_borne_by == "platform" else 0)
     return Split(gross, tax, owner, platform, fee, commission, discount)

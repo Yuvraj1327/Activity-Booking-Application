@@ -100,6 +100,9 @@ class Settings(BaseSettings):
     # payment_status "unpaid"; for development/testing or venues that take no online payment.
     booking_mode: Literal["hold", "instant"] = "hold"
     booking_hold_minutes: int | None = Field(default=None, ge=1, le=1440)
+    # A venue with several sports that each have an active activity commission rule: which one applies is a
+    # client decision. UNSET (None) = such bookings get NO commission rate and are not accrued until decided.
+    commission_activity_tiebreak: Literal["lowest", "highest"] | None = None
     # Customers may cancel a CONFIRMED booking only when this is set and enough notice remains (Q9).
     cancellation_min_notice_hours: int | None = Field(default=None, ge=0, le=8760)
     booking_min_notice_minutes: int | None = Field(default=None, ge=0, le=525600)  # N6
